@@ -11,10 +11,16 @@ import { Link } from 'react-router-dom';
 const CustomTooltip = ({ active, payload, label }) => {
   if (!active || !payload?.length) return null;
   return (
-    <div className="glass border border-yellow-500/20 px-3 py-2 rounded-lg text-xs font-rajdhani">
-      <div className="text-gray-400 mb-1">{label}</div>
+    <div className="glass" style={{
+      border: '1px solid rgba(234,179,8,0.2)',
+      padding: '8px 12px',
+      borderRadius: '8px',
+    }}>
+      <div className="font-rajdhani" style={{ color: '#9ca3af', fontSize: '11px', marginBottom: '4px' }}>{label}</div>
       {payload.map((p) => (
-        <div key={p.dataKey} style={{ color: p.color }}>{p.name}: {p.value?.toFixed(0)}</div>
+        <div key={p.dataKey} className="font-rajdhani" style={{ color: p.color, fontSize: '12px' }}>
+          {p.name}: {p.value?.toFixed(0)}
+        </div>
       ))}
     </div>
   );
@@ -22,7 +28,7 @@ const CustomTooltip = ({ active, payload, label }) => {
 
 export default function AnalyticsPage() {
   const { currentPlayer, loadPlayers } = usePlayerStore();
-  const [stats, setStats] = useState(null);
+  const [stats, setStats]     = useState(null);
   const [history, setHistory] = useState([]);
   const [loading, setLoading] = useState(false);
 
@@ -45,11 +51,11 @@ export default function AnalyticsPage() {
 
   if (!currentPlayer) {
     return (
-      <div className="min-h-screen pt-24 flex items-center justify-center bg-grid">
-        <div className="glass border border-yellow-500/20 rounded-2xl p-10 text-center max-w-md">
-          <div className="text-5xl mb-4">📊</div>
-          <h2 className="font-orbitron text-xl text-yellow-400 mb-3">No Player Selected</h2>
-          <Link to="/" className="glass-gold border border-yellow-500/30 px-6 py-3 rounded-xl font-rajdhani font-bold text-yellow-400">
+      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div className="glass" style={{ border: '1px solid rgba(234,179,8,0.2)', borderRadius: '20px', padding: '48px', textAlign: 'center', maxWidth: '400px' }}>
+          <div style={{ fontSize: '48px', marginBottom: '16px' }}>📊</div>
+          <h2 className="font-orbitron" style={{ color: '#facc15', fontSize: '20px', marginBottom: '20px' }}>No Player Selected</h2>
+          <Link to="/" className="glass-gold font-rajdhani font-bold" style={{ border: '1px solid rgba(234,179,8,0.3)', padding: '10px 24px', borderRadius: '8px', color: '#facc15', textDecoration: 'none', fontSize: '14px' }}>
             ← Go Home
           </Link>
         </div>
@@ -57,7 +63,6 @@ export default function AnalyticsPage() {
     );
   }
 
-  // Build chart data from history (reversed = chronological)
   const chartData = [...history].reverse().map((r, i) => ({
     round: i + 1,
     balance: r.resultingBalance,
@@ -65,57 +70,82 @@ export default function AnalyticsPage() {
     payout: r.payout,
     profit: r.payout - r.betAmount,
     winRate: parseFloat((r.winRateUsed * 100).toFixed(1)),
-    outcome: r.outcome === 'win' ? 1 : 0,
   }));
 
-  const winCount = history.filter((r) => r.outcome === 'win').length;
-  const loseCount = history.length - winCount;
-  const totalBet = history.reduce((s, r) => s + r.betAmount, 0);
+  const winCount  = history.filter((r) => r.outcome === 'win').length;
+  const totalBet    = history.reduce((s, r) => s + r.betAmount, 0);
   const totalPayout = history.reduce((s, r) => s + r.payout, 0);
 
   return (
-    <div className="min-h-screen pt-16 bg-grid">
-      <div className="max-w-6xl mx-auto px-4 py-10">
-        <div className="flex items-center justify-between mb-8">
-          <div>
-            <h1 className="font-orbitron text-3xl font-black gradient-text-gold">ANALYTICS</h1>
-            <p className="text-gray-400 font-rajdhani text-sm mt-1">
-              Player: <span className="text-yellow-400">{currentPlayer.username}</span>
-            </p>
-          </div>
-          <div className="glass border border-white/05 rounded-xl px-4 py-2 text-center">
-            <div className="text-xs text-gray-500 font-rajdhani">Level</div>
-            <div className="font-orbitron font-bold text-yellow-400 text-xl">{currentPlayer.level}</div>
-          </div>
-        </div>
+    <div style={{ position: 'relative', minHeight: '100vh', overflowX: 'hidden' }}>
 
-        {/* Top stats */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-          <StatCard label="Total Wins" value={currentPlayer.totalWins} icon="✅" color="green" />
-          <StatCard label="Total Losses" value={currentPlayer.totalLosses} icon="❌" color="red" />
-          <StatCard
-            label="Net Profit"
-            value={`${currentPlayer.totalProfit?.toFixed(0)} 🪙`}
-            icon="💰"
-            color={currentPlayer.totalProfit >= 0 ? 'green' : 'red'}
-          />
-          <StatCard label="Best Win" value={`${currentPlayer.highestSingleWin?.toFixed(0)} 🪙`} icon="🏆" color="gold" />
+      {/* ── HERO ── */}
+      <section style={{
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        textAlign: 'center',
+        padding: 'clamp(80px, 10vw, 120px) clamp(16px, 4vw, 48px) clamp(60px, 8vw, 100px)',
+        minHeight: '100vh',
+      }}>
+        <p className="font-rajdhani" style={{ fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.35em', color: 'rgba(234,179,8,0.7)', marginBottom: '16px' }}>
+          Player Stats
+        </p>
+        <h1 className="font-orbitron font-black gradient-text-gold" style={{ fontSize: 'clamp(40px, 8vw, 100px)', letterSpacing: '0.2em', lineHeight: 1, marginBottom: '16px' }}>
+          ANALYTICS
+        </h1>
+        <p style={{ color: '#d1d5db', fontSize: 'clamp(14px, 2vw, 18px)', fontWeight: 300, maxWidth: '520px', margin: '0 auto 48px', lineHeight: 1.7 }}>
+          Tracking performance for <span style={{ color: '#fde047' }}>{currentPlayer.username}</span>
+        </p>
+
+        {/* Top stat cards */}
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))',
+          gap: 'clamp(12px, 2vw, 20px)',
+          width: '100%',
+          maxWidth: '75vw',
+          marginBottom: '40px',
+        }}>
+          {[
+            { label: 'Total Wins',   value: currentPlayer.totalWins,                                              color: '#86efac' },
+            { label: 'Total Losses', value: currentPlayer.totalLosses,                                            color: '#f87171' },
+            { label: 'Net Profit',   value: `${currentPlayer.totalProfit?.toFixed(0)} 🪙`,                        color: currentPlayer.totalProfit >= 0 ? '#86efac' : '#f87171' },
+            { label: 'Best Win',     value: `${currentPlayer.highestSingleWin?.toFixed(0)} 🪙`,                   color: '#fde047' },
+            { label: 'Level',        value: currentPlayer.level,                                                  color: '#67e8f9' },
+          ].map((s) => (
+            <div key={s.label} className="pill-card" style={{
+              display: 'flex', flexDirection: 'column', alignItems: 'center',
+              justifyContent: 'center', textAlign: 'center', gap: '8px',
+              padding: 'clamp(16px, 2vw, 24px)', minHeight: '110px',
+            }}>
+              <div className="font-orbitron font-black" style={{ fontSize: 'clamp(20px, 2.5vw, 28px)', color: s.color }}>{s.value}</div>
+              <div className="font-rajdhani text-gray-400" style={{ fontSize: 'clamp(10px, 1vw, 13px)', textTransform: 'uppercase', letterSpacing: '0.3em' }}>{s.label}</div>
+            </div>
+          ))}
         </div>
 
         {loading && (
-          <div className="text-center py-10 text-gray-500 font-rajdhani">Loading charts...</div>
+          <div className="font-rajdhani" style={{ color: '#6b7280', fontSize: '14px' }}>Loading charts...</div>
         )}
+      </section>
 
-        {chartData.length > 0 && (
-          <div className="space-y-6">
+      {/* ── CHARTS ── */}
+      {chartData.length > 0 && (
+        <section style={{ padding: 'clamp(40px, 6vw, 80px) clamp(16px, 4vw, 48px)' }}>
+          <div style={{ maxWidth: '75%', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 'clamp(16px, 2.5vw, 28px)' }}>
+
             {/* Balance history */}
-            <div className="glass border border-white/05 rounded-xl p-6">
-              <h3 className="font-orbitron text-sm font-bold text-cyan-400 mb-4">📈 BALANCE HISTORY</h3>
+            <div className="glass" style={{ border: '1px solid rgba(255,255,255,0.1)', borderRadius: '24px', padding: 'clamp(20px, 3vw, 32px)' }}>
+              <div className="font-rajdhani" style={{ fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.35em', color: '#67e8f9', marginBottom: '20px' }}>
+                📈 Balance History
+              </div>
               <ResponsiveContainer width="100%" height={220}>
                 <AreaChart data={chartData}>
                   <defs>
                     <linearGradient id="balGrad" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#00f5ff" stopOpacity={0.3} />
+                      <stop offset="5%"  stopColor="#00f5ff" stopOpacity={0.3} />
                       <stop offset="95%" stopColor="#00f5ff" stopOpacity={0} />
                     </linearGradient>
                   </defs>
@@ -128,24 +158,32 @@ export default function AnalyticsPage() {
               </ResponsiveContainer>
             </div>
 
-            {/* Win/Loss bar */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="glass border border-white/05 rounded-xl p-6">
-                <h3 className="font-orbitron text-sm font-bold text-yellow-400 mb-4">🎯 BET vs PAYOUT</h3>
+            {/* Bet vs Payout + RTP */}
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+              gap: 'clamp(16px, 2.5vw, 28px)',
+            }}>
+              <div className="glass" style={{ border: '1px solid rgba(255,255,255,0.1)', borderRadius: '24px', padding: 'clamp(20px, 3vw, 32px)' }}>
+                <div className="font-rajdhani" style={{ fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.35em', color: '#fde047', marginBottom: '20px' }}>
+                  🎯 Bet vs Payout
+                </div>
                 <ResponsiveContainer width="100%" height={200}>
                   <BarChart data={chartData.slice(-30)}>
                     <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" />
                     <XAxis dataKey="round" stroke="#4b5563" tick={{ fill: '#6b7280', fontSize: 10 }} />
                     <YAxis stroke="#4b5563" tick={{ fill: '#6b7280', fontSize: 10 }} />
                     <Tooltip content={<CustomTooltip />} />
-                    <Bar dataKey="bet" fill="#f5c51844" name="Bet" radius={[2, 2, 0, 0]} />
-                    <Bar dataKey="payout" fill="#39ff1488" name="Payout" radius={[2, 2, 0, 0]} />
+                    <Bar dataKey="bet"    fill="rgba(245,197,24,0.3)"  name="Bet"    radius={[2,2,0,0]} />
+                    <Bar dataKey="payout" fill="rgba(57,255,20,0.55)"  name="Payout" radius={[2,2,0,0]} />
                   </BarChart>
                 </ResponsiveContainer>
               </div>
 
-              <div className="glass border border-white/05 rounded-xl p-6">
-                <h3 className="font-orbitron text-sm font-bold text-purple-400 mb-4">🧠 RTP HISTORY</h3>
+              <div className="glass" style={{ border: '1px solid rgba(255,255,255,0.1)', borderRadius: '24px', padding: 'clamp(20px, 3vw, 32px)' }}>
+                <div className="font-rajdhani" style={{ fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.35em', color: '#a855f7', marginBottom: '20px' }}>
+                  🧠 RTP History
+                </div>
                 <ResponsiveContainer width="100%" height={200}>
                   <LineChart data={chartData.slice(-30)}>
                     <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" />
@@ -159,56 +197,64 @@ export default function AnalyticsPage() {
             </div>
 
             {/* Profit per round */}
-            <div className="glass border border-white/05 rounded-xl p-6">
-              <h3 className="font-orbitron text-sm font-bold text-green-400 mb-4">💹 PROFIT PER ROUND</h3>
+            <div className="glass" style={{ border: '1px solid rgba(255,255,255,0.1)', borderRadius: '24px', padding: 'clamp(20px, 3vw, 32px)' }}>
+              <div className="font-rajdhani" style={{ fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.35em', color: '#86efac', marginBottom: '20px' }}>
+                💹 Profit Per Round
+              </div>
               <ResponsiveContainer width="100%" height={180}>
                 <BarChart data={chartData.slice(-40)}>
                   <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" />
                   <XAxis dataKey="round" stroke="#4b5563" tick={{ fill: '#6b7280', fontSize: 10 }} />
                   <YAxis stroke="#4b5563" tick={{ fill: '#6b7280', fontSize: 10 }} />
                   <Tooltip content={<CustomTooltip />} />
-                  <Bar
-                    dataKey="profit"
-                    name="Profit"
-                    radius={[2, 2, 0, 0]}
-                    fill="#39ff14"
-                    // Color bars by positive/negative
-                    label={false}
-                  />
+                  <Bar dataKey="profit" name="Profit" radius={[2,2,0,0]} fill="#39ff14" />
                 </BarChart>
               </ResponsiveContainer>
             </div>
 
-            {/* Summary table */}
-            <div className="glass border border-white/05 rounded-xl p-6">
-              <h3 className="font-orbitron text-sm font-bold text-gray-300 mb-4 uppercase tracking-wider">Session Summary (Last {history.length} rounds)</h3>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {/* Session summary */}
+            <div className="glass" style={{ border: '1px solid rgba(255,255,255,0.1)', borderRadius: '24px', padding: 'clamp(20px, 3vw, 32px)' }}>
+              <div className="font-rajdhani" style={{ fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.35em', color: '#9ca3af', marginBottom: '20px' }}>
+                Session Summary — Last {history.length} Rounds
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '12px' }}>
                 {[
-                  { label: 'Win Rate', value: `${history.length > 0 ? ((winCount / history.length) * 100).toFixed(1) : 0}%`, color: 'text-green-400' },
-                  { label: 'Total Wagered', value: `${totalBet.toFixed(0)} 🪙`, color: 'text-yellow-400' },
-                  { label: 'Total Returned', value: `${totalPayout.toFixed(0)} 🪙`, color: 'text-cyan-400' },
-                  { label: 'Net Result', value: `${(totalPayout - totalBet).toFixed(0)} 🪙`, color: totalPayout >= totalBet ? 'text-green-400' : 'text-red-400' },
+                  { label: 'Win Rate',       value: `${history.length > 0 ? ((winCount / history.length) * 100).toFixed(1) : 0}%`, color: '#86efac' },
+                  { label: 'Total Wagered',  value: `${totalBet.toFixed(0)} 🪙`,                                                    color: '#fde047' },
+                  { label: 'Total Returned', value: `${totalPayout.toFixed(0)} 🪙`,                                                 color: '#67e8f9' },
+                  { label: 'Net Result',     value: `${(totalPayout - totalBet).toFixed(0)} 🪙`,                                    color: totalPayout >= totalBet ? '#86efac' : '#f87171' },
                 ].map((s) => (
-                  <div key={s.label} className="text-center">
-                    <div className={`font-orbitron font-bold text-lg ${s.color}`}>{s.value}</div>
-                    <div className="text-xs text-gray-500 font-rajdhani">{s.label}</div>
+                  <div key={s.label} style={{ textAlign: 'center', padding: '16px', background: 'rgba(255,255,255,0.03)', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.07)' }}>
+                    <div className="font-orbitron font-black" style={{ fontSize: 'clamp(14px, 2vw, 20px)', color: s.color, marginBottom: '6px' }}>{s.value}</div>
+                    <div className="font-rajdhani" style={{ fontSize: '11px', color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.25em' }}>{s.label}</div>
                   </div>
                 ))}
               </div>
             </div>
-          </div>
-        )}
 
-        {!loading && chartData.length === 0 && (
-          <div className="glass border border-white/05 rounded-xl p-12 text-center">
-            <div className="text-5xl mb-4">🎰</div>
-            <div className="font-rajdhani text-gray-400">No game history yet. Start playing to see analytics!</div>
-            <Link to="/casino" className="mt-4 inline-block glass-gold border border-yellow-500/30 px-6 py-2 rounded-xl font-rajdhani font-bold text-yellow-400">
-              Play Now →
-            </Link>
           </div>
-        )}
-      </div>
+        </section>
+      )}
+
+      {!loading && chartData.length === 0 && (
+        <section style={{ padding: 'clamp(40px, 6vw, 80px) clamp(16px, 4vw, 48px)' }}>
+          <div style={{ maxWidth: '75%', margin: '0 auto' }}>
+            <div className="glass" style={{ border: '1px solid rgba(255,255,255,0.08)', borderRadius: '24px', padding: '48px', textAlign: 'center' }}>
+              <div style={{ fontSize: '48px', marginBottom: '16px' }}>🎰</div>
+              <div className="font-rajdhani" style={{ color: '#9ca3af', marginBottom: '24px', fontSize: '15px' }}>
+                No game history yet. Start playing to see analytics!
+              </div>
+              <Link to="/casino" className="glass-gold font-rajdhani font-bold" style={{
+                border: '1px solid rgba(234,179,8,0.3)', padding: '10px 24px',
+                borderRadius: '8px', color: '#facc15', textDecoration: 'none', fontSize: '14px',
+              }}>
+                Play Now →
+              </Link>
+            </div>
+          </div>
+        </section>
+      )}
+
     </div>
   );
 }

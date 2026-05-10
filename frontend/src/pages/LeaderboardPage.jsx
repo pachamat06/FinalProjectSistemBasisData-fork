@@ -3,9 +3,9 @@ import { useLeaderboardStore } from '../store';
 import { fetchLeaderboard } from '../services/api';
 
 const METRICS = [
-  { key: 'profit', label: 'Top Profit', icon: '💰' },
-  { key: 'highestWin', label: 'Biggest Win', icon: '🎯' },
-  { key: 'mostActive', label: 'Most Active', icon: '🔥' },
+  { key: 'profit',     label: 'Top Profit',   icon: '💰' },
+  { key: 'highestWin', label: 'Biggest Win',  icon: '🎯' },
+  { key: 'mostActive', label: 'Most Active',  icon: '🔥' },
 ];
 
 export default function LeaderboardPage() {
@@ -17,7 +17,7 @@ export default function LeaderboardPage() {
     try {
       const data = await fetchLeaderboard(m);
       if (data?.leaderboard) setLeaderboard(data.leaderboard);
-      if (data?.recentWins) setRecentWins(data.recentWins);
+      if (data?.recentWins)  setRecentWins(data.recentWins);
     } catch (e) {
       console.error(e);
     } finally {
@@ -37,134 +37,282 @@ export default function LeaderboardPage() {
   };
 
   return (
-    <div className="min-h-screen pt-16 bg-grid">
-      <div className="max-w-5xl mx-auto px-4 py-12">
-        {/* Header */}
-        <div className="text-center mb-10">
-          <h1 className="font-orbitron text-4xl font-black gradient-text-gold text-glow-gold mb-2">
-            🏆 LEADERBOARD
-          </h1>
-          <p className="text-gray-400 font-rajdhani">Realtime rankings — updates every 10 seconds</p>
-          <div className="flex items-center justify-center gap-1.5 mt-2">
-            <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
-            <span className="text-green-400 text-xs font-rajdhani">LIVE</span>
-          </div>
+    <div style={{ position: 'relative', minHeight: '100vh', overflowX: 'hidden' }}>
+
+      {/* ── HERO ── */}
+      <section style={{
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        textAlign: 'center',
+        padding: 'clamp(80px, 10vw, 120px) clamp(16px, 4vw, 48px) clamp(60px, 8vw, 100px)',
+        minHeight: '100vh',
+      }}>
+        <p className="font-rajdhani" style={{
+          fontSize: '11px',
+          textTransform: 'uppercase',
+          letterSpacing: '0.35em',
+          color: 'rgba(234,179,8,0.7)',
+          marginBottom: '16px',
+        }}>
+          Rankings
+        </p>
+
+        <h1 className="font-orbitron font-black gradient-text-gold text-glow-gold" style={{
+          fontSize: 'clamp(40px, 8vw, 100px)',
+          letterSpacing: '0.2em',
+          lineHeight: 1,
+          marginBottom: '16px',
+        }}>
+          LEADERBOARD
+        </h1>
+
+        <p style={{
+          color: '#d1d5db',
+          fontSize: 'clamp(14px, 2vw, 18px)',
+          fontWeight: 300,
+          maxWidth: '520px',
+          margin: '0 auto 12px',
+          lineHeight: 1.7,
+        }}>
+          Realtime rankings — updates every 10 seconds.
+        </p>
+
+        {/* Live indicator */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '48px' }}>
+          <span style={{
+            width: '8px', height: '8px', borderRadius: '50%',
+            background: '#4ade80', display: 'inline-block', animation: 'pulse 2s infinite',
+          }} />
+          <span className="font-rajdhani" style={{ color: '#4ade80', fontSize: '12px', letterSpacing: '0.2em' }}>LIVE</span>
         </div>
 
         {/* Metric tabs */}
-        <div className="flex gap-3 justify-center mb-8 flex-wrap">
+        <div style={{
+          display: 'flex',
+          flexWrap: 'wrap',
+          justifyContent: 'center',
+          gap: '10px',
+          marginBottom: '56px',
+        }}>
           {METRICS.map((m) => (
             <button
               key={m.key}
               onClick={() => setMetric(m.key)}
-              className={`px-5 py-2.5 rounded-xl font-rajdhani font-bold text-sm transition-all flex items-center gap-2
-                ${metric === m.key
-                  ? 'glass-gold border border-yellow-500/40 text-yellow-400 glow-gold'
-                  : 'glass border border-white/08 text-gray-400 hover:border-yellow-500/20 hover:text-yellow-400'}`}
+              className="font-rajdhani font-bold"
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                padding: '10px 22px',
+                borderRadius: '8px',
+                fontSize: '14px',
+                cursor: 'pointer',
+                transition: 'all 0.2s',
+                ...(metric === m.key
+                  ? { background: 'rgba(234,179,8,0.18)', border: '1px solid rgba(234,179,8,0.45)', color: '#fde047' }
+                  : { background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', color: '#9ca3af' }),
+              }}
+              onMouseOver={e => { if (metric !== m.key) { e.currentTarget.style.borderColor = 'rgba(234,179,8,0.3)'; e.currentTarget.style.color = '#fde047'; }}}
+              onMouseOut={e => { if (metric !== m.key) { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)'; e.currentTarget.style.color = '#9ca3af'; }}}
             >
               <span>{m.icon}</span> {m.label}
             </button>
           ))}
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Main leaderboard */}
-          <div className="lg:col-span-2">
-            {/* Top 3 podium */}
-            {leaderboard.length >= 3 && (
-              <div className="grid grid-cols-3 gap-3 mb-6">
-                {[leaderboard[1], leaderboard[0], leaderboard[2]].map((entry, displayIdx) => {
-                  const rank = displayIdx === 0 ? 2 : displayIdx === 1 ? 1 : 3;
-                  const actualEntry = entry;
-                  return (
-                    <div
-                      key={actualEntry?.playerId}
-                      className={`glass border rounded-xl p-4 text-center card-hover flex flex-col items-center
-                        ${rank === 1 ? 'border-yellow-400/40 glow-gold row-start-1' :
-                          rank === 2 ? 'border-gray-400/30' :
-                          'border-amber-700/30'}`}
-                      style={rank === 1 ? { marginTop: 0 } : { marginTop: '1.5rem' }}
-                    >
-                      <div className="text-3xl mb-1">{rank === 1 ? '🥇' : rank === 2 ? '🥈' : '🥉'}</div>
-                      <div className="font-rajdhani font-bold text-white text-sm">{actualEntry?.username || 'Player'}</div>
-                      <div className={`font-orbitron font-bold text-xs mt-1
-                        ${rank === 1 ? 'text-yellow-400' : rank === 2 ? 'text-gray-300' : 'text-amber-600'}`}>
-                        {formatScore(actualEntry?.score, metric)}
-                      </div>
-                      <div className={`w-8 h-8 rounded-full flex items-center justify-center font-orbitron font-bold text-sm mt-2
-                        ${rank === 1 ? 'rank-1' : rank === 2 ? 'rank-2' : 'rank-3'}`}>
-                        {rank}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
+        {/* Top 3 podium */}
+        {leaderboard.length >= 3 && (
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(3, 1fr)',
+            gap: 'clamp(10px, 2vw, 20px)',
+            width: '100%',
+            maxWidth: '600px',
+            alignItems: 'end',
+            marginBottom: '16px',
+          }}>
+            {[leaderboard[1], leaderboard[0], leaderboard[2]].map((entry, displayIdx) => {
+              const rank = displayIdx === 0 ? 2 : displayIdx === 1 ? 1 : 3;
+              const medals  = { 1: '🥇', 2: '🥈', 3: '🥉' };
+              const colors  = { 1: '#fde047', 2: '#d1d5db', 3: '#b45309' };
+              const borders = { 1: 'rgba(234,179,8,0.4)', 2: 'rgba(156,163,175,0.3)', 3: 'rgba(180,83,9,0.3)' };
+              return (
+                <div
+                  key={entry?.playerId}
+                  className="glass"
+                  style={{
+                    border: `1px solid ${borders[rank]}`,
+                    borderRadius: '16px',
+                    padding: 'clamp(16px, 2vw, 24px) 12px',
+                    textAlign: 'center',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    gap: '6px',
+                    marginTop: rank === 1 ? '0' : '24px',
+                  }}
+                >
+                  <div style={{ fontSize: '28px' }}>{medals[rank]}</div>
+                  <div className="font-rajdhani font-bold text-white" style={{ fontSize: 'clamp(12px, 1.5vw, 15px)' }}>
+                    {entry?.username || 'Player'}
+                  </div>
+                  <div className="font-orbitron font-bold" style={{ fontSize: 'clamp(11px, 1.2vw, 13px)', color: colors[rank] }}>
+                    {formatScore(entry?.score, metric)}
+                  </div>
+                  <div className={rank === 1 ? 'rank-1' : rank === 2 ? 'rank-2' : 'rank-3'} style={{
+                    width: '28px', height: '28px', borderRadius: '50%',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    fontFamily: 'Orbitron', fontWeight: 900, fontSize: '13px', marginTop: '4px',
+                  }}>
+                    {rank}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </section>
 
-            {/* Rest of leaderboard */}
-            <div className="space-y-2">
+      {/* ── FULL RANKINGS + SIDEBAR ── */}
+      <section style={{ padding: 'clamp(40px, 6vw, 80px) clamp(16px, 4vw, 48px)' }}>
+        <div style={{ maxWidth: '75%', margin: '0 auto' }}>
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+            gap: 'clamp(16px, 2.5vw, 28px)',
+            alignItems: 'start',
+          }}>
+
+            {/* Rankings list */}
+            <div className="glass" style={{
+              border: '1px solid rgba(255,255,255,0.1)',
+              borderRadius: '24px',
+              padding: 'clamp(20px, 3vw, 32px)',
+            }}>
+              <div className="font-rajdhani text-gray-400" style={{ fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.35em', marginBottom: '20px' }}>
+                Full Rankings
+              </div>
+
               {loading && leaderboard.length === 0 && (
-                <div className="glass border border-white/05 rounded-xl p-8 text-center text-gray-500 font-rajdhani">
+                <div className="font-rajdhani" style={{ textAlign: 'center', color: '#6b7280', padding: '32px 0', fontSize: '14px' }}>
                   Loading...
                 </div>
               )}
-              {leaderboard.slice(3).map((entry, i) => (
-                <div
-                  key={entry.playerId || i}
-                  className="glass border border-white/05 rounded-xl p-4 flex items-center gap-4 card-hover animate-slide-up"
-                >
-                  <div className="w-8 h-8 rounded-full bg-white/08 flex items-center justify-center font-orbitron text-sm text-gray-400 font-bold">
-                    {i + 4}
-                  </div>
-                  <div className="flex-1">
-                    <div className="font-rajdhani font-bold text-white">{entry.username || 'Player'}</div>
-                    <div className="text-xs text-gray-500">
-                      Wins: {entry.totalWins || '—'} | Losses: {entry.totalLosses || '—'}
-                    </div>
-                  </div>
-                  <div className="font-orbitron font-bold text-yellow-400 text-sm">
-                    {formatScore(entry.score, metric)}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
 
-          {/* Sidebar */}
-          <div className="space-y-6">
-            {/* Recent big wins */}
-            <div className="glass border border-yellow-500/15 rounded-xl p-5">
-              <h3 className="font-orbitron text-sm font-bold gradient-text-gold mb-4">💰 RECENT WINS</h3>
-              <div className="space-y-2">
-                {recentWins.length === 0 && (
-                  <div className="text-gray-600 text-xs font-rajdhani text-center py-2">No wins yet</div>
-                )}
-                {recentWins.map((win, i) => (
-                  <div key={i} className="flex items-center justify-between py-2 border-b border-white/03">
-                    <div>
-                      <div className="text-sm font-rajdhani font-bold text-white">{win.username}</div>
-                      <div className="text-xs text-gray-500">{win.multiplier}x multiplier</div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                {leaderboard.slice(3).map((entry, i) => (
+                  <div
+                    key={entry.playerId || i}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '14px',
+                      border: '1px solid rgba(255,255,255,0.07)',
+                      borderRadius: '10px',
+                      background: 'rgba(255,255,255,0.03)',
+                      padding: '12px 16px',
+                    }}
+                  >
+                    <div style={{
+                      width: '30px', height: '30px', borderRadius: '50%',
+                      background: 'rgba(255,255,255,0.07)',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      fontFamily: 'Orbitron', fontWeight: 900, fontSize: '12px', color: '#9ca3af',
+                      flexShrink: 0,
+                    }}>
+                      {i + 4}
                     </div>
-                    <div className="text-green-400 font-rajdhani font-bold text-sm">
-                      +{win.payout?.toFixed(0)}
+                    <div style={{ flex: 1 }}>
+                      <div className="font-rajdhani font-bold text-white" style={{ fontSize: '14px' }}>
+                        {entry.username || 'Player'}
+                      </div>
+                      <div style={{ fontSize: '11px', color: '#6b7280' }}>
+                        Wins: {entry.totalWins || '—'} · Losses: {entry.totalLosses || '—'}
+                      </div>
+                    </div>
+                    <div className="font-orbitron font-bold" style={{ fontSize: '13px', color: '#fde047' }}>
+                      {formatScore(entry.score, metric)}
                     </div>
                   </div>
                 ))}
+
+                {!loading && leaderboard.length <= 3 && (
+                  <div className="font-rajdhani" style={{ textAlign: 'center', color: '#6b7280', padding: '20px 0', fontSize: '13px' }}>
+                    No further entries.
+                  </div>
+                )}
               </div>
             </div>
 
-            {/* Legend */}
-            <div className="glass border border-white/05 rounded-xl p-4">
-              <h3 className="font-orbitron text-xs font-bold text-gray-400 mb-3 uppercase tracking-wider">Ranking System</h3>
-              <div className="space-y-2 text-xs font-rajdhani text-gray-500">
-                <div>💰 <span className="text-white">Top Profit</span> — Net coins earned</div>
-                <div>🎯 <span className="text-white">Biggest Win</span> — Single highest payout</div>
-                <div>🔥 <span className="text-white">Most Active</span> — Total rounds played</div>
+            {/* Sidebar */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 'clamp(12px, 2vw, 20px)' }}>
+
+              {/* Recent wins */}
+              <div className="glass" style={{
+                border: '1px solid rgba(234,179,8,0.15)',
+                borderRadius: '24px',
+                padding: 'clamp(20px, 3vw, 28px)',
+              }}>
+                <div className="font-rajdhani text-gray-400" style={{ fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.35em', marginBottom: '20px' }}>
+                  💰 Recent Wins
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0' }}>
+                  {recentWins.length === 0 && (
+                    <div className="font-rajdhani" style={{ textAlign: 'center', color: '#6b7280', fontSize: '13px', padding: '16px 0' }}>No wins yet</div>
+                  )}
+                  {recentWins.map((win, i) => (
+                    <div key={i} style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      padding: '12px 0',
+                      borderBottom: i < recentWins.length - 1 ? '1px solid rgba(255,255,255,0.06)' : 'none',
+                    }}>
+                      <div>
+                        <div className="font-rajdhani font-bold text-white" style={{ fontSize: '14px' }}>{win.username}</div>
+                        <div style={{ fontSize: '11px', color: '#6b7280' }}>{win.multiplier}× multiplier</div>
+                      </div>
+                      <div className="font-rajdhani font-bold" style={{ fontSize: '14px', color: '#86efac' }}>
+                        +{win.payout?.toFixed(0)}
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
+
+              {/* Legend */}
+              <div className="glass" style={{
+                border: '1px solid rgba(255,255,255,0.08)',
+                borderRadius: '24px',
+                padding: 'clamp(20px, 3vw, 28px)',
+              }}>
+                <div className="font-rajdhani text-gray-400" style={{ fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.35em', marginBottom: '16px' }}>
+                  Ranking System
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                  {[
+                    { icon: '💰', label: 'Top Profit',   desc: 'Net coins earned'         },
+                    { icon: '🎯', label: 'Biggest Win',  desc: 'Single highest payout'    },
+                    { icon: '🔥', label: 'Most Active',  desc: 'Total rounds played'       },
+                  ].map((r) => (
+                    <div key={r.label} style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                      <span style={{ fontSize: '16px' }}>{r.icon}</span>
+                      <div>
+                        <span className="font-rajdhani font-bold text-white" style={{ fontSize: '13px' }}>{r.label}</span>
+                        <span className="font-rajdhani" style={{ fontSize: '12px', color: '#6b7280' }}> — {r.desc}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
             </div>
           </div>
         </div>
-      </div>
+      </section>
+
     </div>
   );
 }

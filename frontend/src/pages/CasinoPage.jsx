@@ -32,8 +32,7 @@ export default function CasinoPage() {
   }, [currentPlayer?.id]);
 
   const handleSpin = async () => {
-    if (!currentPlayer) return;
-    if (isSpinning) return;
+    if (!currentPlayer || isSpinning) return;
     if (betAmount <= 0 || betAmount > currentPlayer.balance) return;
 
     setSpinning(true);
@@ -41,14 +40,10 @@ export default function CasinoPage() {
 
     try {
       const result = await spinGame(currentPlayer.id, betAmount);
-
-      // Animate reels for ~1.8s
       await new Promise((r) => setTimeout(r, 1800));
 
       setOutcome(result.outcome);
       setSpinning(false);
-
-      // Flash effect
       setFlashType(result.outcome);
       setShowFlash(true);
       setTimeout(() => setShowFlash(false), 800);
@@ -63,7 +58,6 @@ export default function CasinoPage() {
         setNotification({ type: 'win', message: `✅ WIN! +${result.payout.toFixed(0)} coins` });
       }
 
-      // Refresh RTP
       fetchRTPProfile(currentPlayer.id).then(setRtpProfile).catch(() => {});
     } catch (err) {
       setSpinning(false);
@@ -71,18 +65,27 @@ export default function CasinoPage() {
     }
   };
 
-  const winRate = rtpProfile?.currentWinRate || 0.45;
-  const winStreak = rtpProfile?.winningStreak || 0;
-  const loseStreak = rtpProfile?.losingStreak || 0;
-
   if (!currentPlayer) {
     return (
-      <div className="min-h-screen pt-24 flex items-center justify-center bg-grid">
-        <div className="glass border border-yellow-500/20 rounded-2xl p-10 text-center max-w-md">
-          <div className="text-5xl mb-4">🎰</div>
-          <h2 className="font-orbitron text-xl text-yellow-400 mb-3">No Player Selected</h2>
-          <p className="text-gray-400 font-rajdhani mb-6">Select a player from the Home page to start playing.</p>
-          <Link to="/" className="glass-gold border border-yellow-500/30 px-6 py-3 rounded-xl font-rajdhani font-bold text-yellow-400">
+      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div className="glass" style={{
+          border: '1px solid rgba(234,179,8,0.2)',
+          borderRadius: '20px',
+          padding: '48px',
+          textAlign: 'center',
+          maxWidth: '400px',
+        }}>
+          <div style={{ fontSize: '48px', marginBottom: '16px' }}>🎰</div>
+          <h2 className="font-orbitron" style={{ color: '#facc15', fontSize: '20px', marginBottom: '12px' }}>No Player Selected</h2>
+          <p className="font-rajdhani" style={{ color: '#9ca3af', marginBottom: '24px' }}>Select a player from the Home page to start playing.</p>
+          <Link to="/" className="glass-gold font-rajdhani font-bold" style={{
+            border: '1px solid rgba(234,179,8,0.3)',
+            padding: '10px 24px',
+            borderRadius: '8px',
+            color: '#facc15',
+            textDecoration: 'none',
+            fontSize: '14px',
+          }}>
             ← Go Home
           </Link>
         </div>
@@ -91,165 +94,271 @@ export default function CasinoPage() {
   }
 
   return (
-    <div className="relative min-h-screen bg-grid pt-32 pb-20 overflow-hidden">
-      <div className="absolute inset-0 bg-black/60" />
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(245,197,24,0.12),transparent_35%),radial-gradient(circle_at_bottom,_rgba(0,245,255,0.08),transparent_45%)]" />
+    <div style={{ position: 'relative', minHeight: '100vh', overflowX: 'hidden' }}>
 
-      <div className="relative z-10">
-        <Notification notification={notification} />
+      <Notification notification={notification} />
 
-        {showFlash && (
-          <div
-            className={`fixed inset-0 pointer-events-none z-40 transition-opacity duration-300 ${flashType === 'win' ? 'outcome-win' : 'outcome-lose'}`}
-          />
-        )}
+      {showFlash && (
+        <div className={`fixed inset-0 pointer-events-none z-40 transition-opacity duration-300 ${flashType === 'win' ? 'outcome-win' : 'outcome-lose'}`} />
+      )}
 
-        <div className="max-w-7xl mx-auto px-4 py-10">
-          <div className="glass border border-white/10 rounded-[40px] p-10">
-            <div className="flex flex-col xl:flex-row items-start justify-between gap-6 mb-10">
-              <div>
-                <div className="text-sm uppercase tracking-[0.35em] text-yellow-300 font-semibold mb-2">Casino floor</div>
-                <h1 className="font-orbitron text-5xl lg:text-6xl font-black text-white leading-tight">Premium spin suite</h1>
-                <p className="text-gray-400 font-rajdhani mt-4 max-w-2xl">Big casino energy with a larger, centered spin section and premium HUD layout.</p>
-              </div>
-              <div className="glass-gold border border-yellow-500/30 rounded-[28px] px-6 py-5 text-center min-w-[220px]">
-                <div className="text-xs uppercase tracking-[0.3em] text-gray-400 mb-2">Balance</div>
-                <div className="font-orbitron text-4xl font-black text-yellow-300 text-glow-gold">{currentPlayer.balance?.toLocaleString(undefined, { maximumFractionDigits: 0 })} 🪙</div>
-              </div>
-            </div>
+      {/* ── HERO ── */}
+      <section style={{
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        textAlign: 'center',
+        padding: 'clamp(80px, 10vw, 120px) clamp(16px, 4vw, 48px) clamp(60px, 8vw, 100px)',
+        minHeight: '100vh',
+      }}>
+        <h1 className="font-orbitron font-black text-white" style={{
+          fontSize: 'clamp(40px, 8vw, 100px)',
+          letterSpacing: '0.2em',
+          lineHeight: 1,
+          marginBottom: '16px',
+        }}>
+          CASINO
+        </h1>
 
-            <div className="grid gap-10 xl:grid-cols-[1.6fr_1fr]">
-              <div className="glass border border-yellow-500/15 rounded-[32px] p-8">
-                <div className="text-center mb-8">
-                  <div className="text-xs uppercase tracking-[0.35em] text-gray-400 mb-3">Spin to win</div>
-                  <div className={`inline-flex items-center justify-center rounded-full px-4 py-2 text-sm font-semibold ${
-                    outcome === 'win'
-                      ? 'bg-green-500/15 text-green-300 border border-green-500/30'
-                      : outcome === 'lose'
-                      ? 'bg-red-500/15 text-red-300 border border-red-500/30'
-                      : 'bg-white/10 text-gray-300 border border-white/15'
-                  }`}>
-                    {outcome === 'win'
-                      ? `✅ WIN! +${lastResult?.payout?.toFixed(0)} coins (${lastResult?.multiplier}x)`
-                      : outcome === 'lose'
-                      ? '❌ No Luck This Time'
-                      : isSpinning
-                      ? '⏳ Spinning...'
-                      : '🎰 Ready to Spin'}
-                  </div>
-                </div>
+        <p style={{
+          color: '#d1d5db',
+          fontSize: 'clamp(14px, 2vw, 18px)',
+          fontWeight: 300,
+          maxWidth: '520px',
+          margin: '0 auto 12px',
+          lineHeight: 1.7,
+        }}>
+          Premium spin suite with adaptive RTP and real-time outcomes.
+        </p>
 
-                <div className="flex justify-center mb-10">
-                  <div className={`rounded-[32px] p-4 border-2 transition-all duration-300 ${
-                    isSpinning ? 'border-yellow-500/60 glow-gold' : outcome === 'win' ? 'border-green-500/60 glow-green' : outcome === 'lose' ? 'border-red-500/30' : 'border-white/10'
-                  }`}>
-                    <SlotReels spinning={isSpinning} outcome={outcome} multiplier={lastResult?.multiplier} />
-                  </div>
-                </div>
-
-                <div className="space-y-6">
-                  <div className="grid gap-3 sm:grid-cols-3">
-                    {BET_PRESETS.map((preset) => (
-                      <button
-                        key={preset}
-                        onClick={() => setBetAmount(preset)}
-                        className={`rounded-2xl px-4 py-3 text-sm font-semibold transition-all ${
-                          betAmount === preset
-                            ? 'bg-yellow-500/20 border border-yellow-500/40 text-yellow-300'
-                            : 'bg-white/5 border border-white/10 text-gray-300 hover:border-yellow-500/30 hover:text-yellow-200'
-                        }`}
-                      >
-                        {preset}
-                      </button>
-                    ))}
-                    <button
-                      onClick={() => setBetAmount(Math.floor(currentPlayer.balance / 2))}
-                      className="rounded-2xl px-4 py-3 text-sm font-semibold bg-white/5 border border-white/10 text-gray-300 hover:border-yellow-500/30 hover:text-yellow-200 transition-all"
-                    >
-                      ½ MAX
-                    </button>
-                  </div>
-
-                  <div className="max-w-md mx-auto">
-                    <input
-                      ref={betInputRef}
-                      type="number"
-                      value={betAmount}
-                      onChange={(e) => setBetAmount(Math.max(1, parseInt(e.target.value) || 0))}
-                      className="casino-input text-center text-xl"
-                      min={1}
-                      max={currentPlayer.balance}
-                    />
-                  </div>
-
-                  <div className="flex justify-center">
-                    <button
-                      id="spin-button"
-                      onClick={handleSpin}
-                      disabled={isSpinning || betAmount <= 0 || betAmount > currentPlayer.balance}
-                      className="spin-btn w-44 h-44 flex items-center justify-center text-black font-orbitron font-black text-2xl glow-gold"
-                      style={{ background: 'linear-gradient(135deg, #f5c518, #b8960c)' }}
-                    >
-                      {isSpinning ? (
-                        <div className="flex flex-col items-center gap-1">
-                          <div className="text-4xl animate-rotate-slow">⚙️</div>
-                          <span className="text-sm uppercase tracking-[0.2em]">SPIN</span>
-                        </div>
-                      ) : (
-                        <div className="flex flex-col items-center gap-1">
-                          <span className="text-5xl">🎰</span>
-                          <span className="text-sm uppercase tracking-[0.2em]">SPIN</span>
-                        </div>
-                      )}
-                    </button>
-                  </div>
-                </div>
-              </div>
-
-              <div className="space-y-6">
-                <div className="glass border border-white/10 rounded-[32px] p-6">
-                  <div className="text-sm uppercase tracking-[0.35em] text-gray-400 mb-5">Session stats</div>
-                  <div className="grid gap-4 grid-cols-2">
-                    <div className="pill-card p-4 text-center">
-                      <div className="text-xs uppercase tracking-[0.25em] text-gray-400">Win rate</div>
-                      <div className="text-3xl font-orbitron font-black text-yellow-300">57.4%</div>
-                    </div>
-                    <div className="pill-card p-4 text-center">
-                      <div className="text-xs uppercase tracking-[0.25em] text-gray-400">RTP</div>
-                      <div className="text-3xl font-orbitron font-black text-cyan-300">57%</div>
-                    </div>
-                    <div className="pill-card p-4 text-center">
-                      <div className="text-xs uppercase tracking-[0.25em] text-gray-400">Win streak</div>
-                      <div className="text-3xl font-orbitron font-black text-green-300">{Math.max(0, currentPlayer?.balance ? Math.floor(currentPlayer.balance / 1000) : 1)}</div>
-                    </div>
-                    <div className="pill-card p-4 text-center">
-                      <div className="text-xs uppercase tracking-[0.25em] text-gray-400">Lose streak</div>
-                      <div className="text-3xl font-orbitron font-black text-red-300">1</div>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="glass border border-white/10 rounded-[32px] p-6">
-                  <div className="text-sm uppercase tracking-[0.35em] text-gray-400 mb-5">Recent outcomes</div>
-                  <div className="space-y-3">
-                    {localHistory.slice(0, 5).map((r, i) => (
-                      <div key={i} className="flex items-center justify-between rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white/90">
-                        <span>{r.outcome === 'win' ? 'Win' : 'Loss'}</span>
-                        <span className={r.outcome === 'win' ? 'text-green-300' : 'text-red-300'}>
-                          {r.outcome === 'win' ? `+${r.payout?.toFixed(0)}` : `-${r.betAmount?.toFixed(0)}`}
-                        </span>
-                      </div>
-                    ))}
-                    {!localHistory.length && (
-                      <div className="text-center text-gray-500 text-sm">No recent outcomes yet.</div>
-                    )}
-                  </div>
-                </div>
-              </div>
+        {/* Balance pill */}
+        <div className="glass-gold" style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: '12px',
+          border: '1px solid rgba(234,179,8,0.3)',
+          borderRadius: '10px',
+          padding: '14px 28px',
+          marginTop: '32px',
+          marginBottom: '40px',
+        }}>
+          <div>
+            <div className="font-rajdhani" style={{ fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.35em', color: '#9ca3af', marginBottom: '4px' }}>Balance</div>
+            <div className="font-orbitron font-black text-glow-gold" style={{ fontSize: 'clamp(22px, 3vw, 32px)', color: '#fde047' }}>
+              {currentPlayer.balance?.toLocaleString(undefined, { maximumFractionDigits: 0 })} 🪙
             </div>
           </div>
         </div>
-      </div>
+
+        {/* Outcome badge */}
+        <div style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          borderRadius: '8px',
+          padding: '10px 24px',
+          fontSize: '14px',
+          fontWeight: 600,
+          marginBottom: '40px',
+          ...(outcome === 'win'
+            ? { background: 'rgba(34,197,94,0.15)', color: '#86efac', border: '1px solid rgba(34,197,94,0.3)' }
+            : outcome === 'lose'
+            ? { background: 'rgba(239,68,68,0.15)', color: '#fca5a5', border: '1px solid rgba(239,68,68,0.3)' }
+            : { background: 'rgba(255,255,255,0.08)', color: '#d1d5db', border: '1px solid rgba(255,255,255,0.12)' }),
+        }}>
+          {outcome === 'win'
+            ? `✅ WIN! +${lastResult?.payout?.toFixed(0)} coins (${lastResult?.multiplier}x)`
+            : outcome === 'lose'
+            ? '❌ No Luck This Time'
+            : isSpinning
+            ? '⏳ Spinning...'
+            : '🎰 Ready to Spin'}
+        </div>
+
+        {/* Slot reels */}
+        <div style={{
+          border: outcome === 'win'
+            ? '2px solid rgba(34,197,94,0.6)'
+            : outcome === 'lose'
+            ? '2px solid rgba(239,68,68,0.3)'
+            : isSpinning
+            ? '2px solid rgba(234,179,8,0.6)'
+            : '2px solid rgba(255,255,255,0.1)',
+          borderRadius: '24px',
+          padding: '16px',
+          marginBottom: '40px',
+          transition: 'border-color 0.3s',
+        }} className={isSpinning ? 'glow-gold' : outcome === 'win' ? 'glow-green' : ''}>
+          <SlotReels spinning={isSpinning} outcome={outcome} multiplier={lastResult?.multiplier} />
+        </div>
+
+        {/* Bet presets */}
+        <div style={{
+          display: 'flex',
+          flexWrap: 'wrap',
+          justifyContent: 'center',
+          gap: '10px',
+          marginBottom: '16px',
+          maxWidth: '520px',
+        }}>
+          {BET_PRESETS.map((preset) => (
+            <button
+              key={preset}
+              onClick={() => setBetAmount(preset)}
+              className="font-rajdhani font-semibold"
+              style={{
+                padding: '10px 20px',
+                borderRadius: '8px',
+                fontSize: '14px',
+                cursor: 'pointer',
+                transition: 'all 0.2s',
+                ...(betAmount === preset
+                  ? { background: 'rgba(234,179,8,0.2)', border: '1px solid rgba(234,179,8,0.4)', color: '#fde047' }
+                  : { background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: '#d1d5db' }),
+              }}
+            >
+              {preset}
+            </button>
+          ))}
+          <button
+            onClick={() => setBetAmount(Math.floor(currentPlayer.balance / 2))}
+            className="font-rajdhani font-semibold"
+            style={{
+              padding: '10px 20px',
+              borderRadius: '8px',
+              fontSize: '14px',
+              cursor: 'pointer',
+              background: 'rgba(255,255,255,0.05)',
+              border: '1px solid rgba(255,255,255,0.1)',
+              color: '#d1d5db',
+              transition: 'all 0.2s',
+            }}
+          >
+            ½ MAX
+          </button>
+        </div>
+
+        {/* Bet input */}
+        <div style={{ width: '100%', maxWidth: '320px', marginBottom: '32px' }}>
+          <input
+            ref={betInputRef}
+            type="number"
+            value={betAmount}
+            onChange={(e) => setBetAmount(Math.max(1, parseInt(e.target.value) || 0))}
+            className="casino-input"
+            style={{ textAlign: 'center', fontSize: '20px', width: '100%' }}
+            min={1}
+            max={currentPlayer.balance}
+          />
+        </div>
+
+        {/* Spin button */}
+        <button
+          id="spin-button"
+          onClick={handleSpin}
+          disabled={isSpinning || betAmount <= 0 || betAmount > currentPlayer.balance}
+          className="spin-btn font-orbitron font-black glow-gold"
+          style={{
+            width: '176px',
+            height: '176px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            color: '#000',
+            fontSize: '24px',
+            background: 'linear-gradient(135deg, #f5c518, #b8960c)',
+          }}
+        >
+          {isSpinning ? (
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}>
+              <div className="animate-rotate-slow" style={{ fontSize: '36px' }}>⚙️</div>
+              <span style={{ fontSize: '12px', letterSpacing: '0.2em' }}>SPIN</span>
+            </div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}>
+              <span style={{ fontSize: '44px' }}>🎰</span>
+              <span style={{ fontSize: '12px', letterSpacing: '0.2em' }}>SPIN</span>
+            </div>
+          )}
+        </button>
+      </section>
+
+      {/* ── STATS + HISTORY ── */}
+      <section style={{ padding: 'clamp(40px, 6vw, 80px) clamp(16px, 4vw, 48px)' }}>
+        <div style={{ maxWidth: '75%', margin: '0 auto' }}>
+
+          {/* Session stats */}
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))',
+            gap: 'clamp(12px, 2vw, 20px)',
+            marginBottom: 'clamp(20px, 3vw, 40px)',
+          }}>
+            {[
+              { label: 'Win Rate',    value: `${((rtpProfile?.currentWinRate || 0.45) * 100).toFixed(1)}%`, color: '#fde047' },
+              { label: 'RTP',         value: `${rtpProfile?.rtp ?? 57}%`,                                    color: '#67e8f9' },
+              { label: 'Win Streak',  value: rtpProfile?.winningStreak ?? 0,                                 color: '#86efac' },
+              { label: 'Lose Streak', value: rtpProfile?.losingStreak ?? 0,                                  color: '#fca5a5' },
+            ].map((s) => (
+              <div key={s.label} className="pill-card" style={{
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                textAlign: 'center',
+                gap: '8px',
+                padding: 'clamp(16px, 2vw, 24px)',
+                minHeight: '120px',
+              }}>
+                <div className="font-orbitron font-black" style={{ fontSize: 'clamp(24px, 3vw, 32px)', color: s.color }}>{s.value}</div>
+                <div className="font-rajdhani text-gray-400" style={{ fontSize: 'clamp(10px, 1vw, 13px)', textTransform: 'uppercase', letterSpacing: '0.3em' }}>{s.label}</div>
+              </div>
+            ))}
+          </div>
+
+          {/* Recent outcomes */}
+          <div className="glass" style={{
+            border: '1px solid rgba(255,255,255,0.1)',
+            borderRadius: '24px',
+            padding: 'clamp(20px, 3vw, 32px)',
+          }}>
+            <div className="font-rajdhani text-gray-400" style={{ fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.35em', marginBottom: '20px' }}>
+              Recent Outcomes
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              {localHistory.slice(0, 8).map((r, i) => (
+                <div key={i} style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  border: '1px solid rgba(255,255,255,0.08)',
+                  borderRadius: '10px',
+                  background: 'rgba(255,255,255,0.03)',
+                  padding: '12px 18px',
+                }}>
+                  <span className="font-rajdhani" style={{ fontSize: '14px', color: 'rgba(255,255,255,0.8)' }}>
+                    {r.outcome === 'win' ? 'Win' : 'Loss'}
+                  </span>
+                  <span className="font-rajdhani font-semibold" style={{
+                    fontSize: '14px',
+                    color: r.outcome === 'win' ? '#86efac' : '#f87171',
+                  }}>
+                    {r.outcome === 'win' ? `+${r.payout?.toFixed(0)}` : `-${r.betAmount?.toFixed(0)}`}
+                  </span>
+                </div>
+              ))}
+              {!localHistory.length && (
+                <div className="font-rajdhani" style={{ textAlign: 'center', color: '#6b7280', fontSize: '14px', padding: '20px 0' }}>
+                  No recent outcomes yet.
+                </div>
+              )}
+            </div>
+          </div>
+
+        </div>
+      </section>
+
     </div>
   );
 }

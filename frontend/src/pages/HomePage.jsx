@@ -4,9 +4,9 @@ import { usePlayerStore, useLeaderboardStore, useSystemStore } from '../store';
 import { fetchLeaderboard } from '../services/api';
 
 export default function HomePage() {
-  const { players, loadPlayers, currentPlayer, setCurrentPlayer } = usePlayerStore();
-  const { leaderboard, setLeaderboard, recentWins } = useLeaderboardStore();
-  const { onlineCount, recentFeed } = useSystemStore();
+  const { players, loadPlayers, currentPlayer } = usePlayerStore();
+  const { setLeaderboard } = useLeaderboardStore();
+  const { onlineCount } = useSystemStore();
 
   useEffect(() => {
     loadPlayers();
@@ -16,181 +16,295 @@ export default function HomePage() {
   }, []);
 
   return (
-    <div className="relative min-h-screen overflow-hidden">
-      <div className="absolute inset-0 -z-10">
-        <div className="absolute inset-0 bg-black/72" />
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(245,197,24,0.12),transparent_35%),radial-gradient(circle_at_bottom,_rgba(0,245,255,0.08),transparent_45%)]" />
-      </div>
+    <div style={{ position: 'relative', minHeight: '100vh', overflowX: 'hidden' }}>
 
-      <section className="relative z-10 pt-32 pb-16">
-        <div className="max-w-6xl mx-auto px-4 text-center">
-          <div className="inline-flex items-center justify-center gap-3 glass-gold px-5 py-3 rounded-full mb-8 border border-yellow-500/20">
-            <span className="w-2.5 h-2.5 rounded-full bg-green-400 animate-pulse" />
-            <span className="text-xs text-green-300 uppercase tracking-[0.35em] font-rajdhani">
-              {onlineCount} players online now
-            </span>
-          </div>
+      {/* ── HERO ── */}
+      <section style={{
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        textAlign: 'center',
+        padding: 'clamp(80px, 10vw, 120px) clamp(16px, 4vw, 48px) clamp(60px, 8vw, 100px)',
+        minHeight: '100vh',
+      }}>
+        <h1 className="font-orbitron font-black text-white" style={{
+          fontSize: 'clamp(48px, 10vw, 120px)',
+          letterSpacing: '0.2em',
+          lineHeight: 1,
+          marginBottom: '24px',
+        }}>
+          JOKRIS99
+        </h1>
 
-          <h1 className="font-orbitron text-7xl md:text-[5.5rem] lg:text-[6.5rem] font-black tracking-[0.24em] mb-6 leading-tight text-white">
-            <span className="gradient-text-gold text-glow-gold">JOKRIS99</span>
-          </h1>
+        <p style={{
+          color: '#d1d5db',
+          fontSize: 'clamp(14px, 2vw, 18px)',
+          fontWeight: 300,
+          maxWidth: '520px',
+          margin: '0 auto 40px',
+          lineHeight: 1.7,
+        }}>
+          Premium virtual casino experience with immersive gameplay, adaptive RTP, and realtime leaderboards.
+        </p>
 
-          <p className="text-gray-300 text-xl md:text-2xl max-w-3xl mx-auto mb-4 font-medium">
-            Premium virtual casino experience with immersive gameplay, adaptive RTP, and realtime leaderboards.
-          </p>
-          <p className="text-yellow-300/80 text-sm uppercase tracking-[0.35em] mb-12">
-            Virtual coins only • Not real gambling
-          </p>
-
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-            <Link
-              to="/games"
-              className="inline-flex items-center justify-center gap-3 rounded-full bg-gradient-to-r from-yellow-500 to-orange-500 px-10 py-4 font-orbitron text-lg uppercase tracking-[0.2em] text-black shadow-[0_20px_80px_rgba(245,197,24,0.25)] transition-transform duration-300 hover:-translate-y-0.5"
-            >
-              <span className="text-2xl">🎰</span>
-              PLAY NOW
-            </Link>
-            <Link
-              to="/leaderboard"
-              className="inline-flex items-center justify-center rounded-full border border-yellow-500/20 bg-white/5 px-10 py-4 text-sm uppercase tracking-[0.2em] text-yellow-300 font-semibold transition-all hover:bg-yellow-500/10"
-            >
-              LEADERBOARD
-            </Link>
-          </div>
+        <div style={{
+          display: 'flex',
+          flexWrap: 'wrap',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: '16px',
+        }}>
+          <Link
+            to="/games"
+            className="font-orbitron font-black"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '8px',
+              borderRadius: '6px',
+              background: 'linear-gradient(to right, #eab308, #f97316)',
+              padding: 'clamp(12px, 1.5vw, 16px) clamp(24px, 4vw, 40px)',
+              fontSize: 'clamp(12px, 1.5vw, 16px)',
+              letterSpacing: '0.2em',
+              textTransform: 'uppercase',
+              color: '#000',
+              textDecoration: 'none',
+              boxShadow: '0 20px 80px rgba(245,197,24,0.25)',
+              transition: 'transform 0.2s',
+            }}
+          >
+            PLAY NOW
+          </Link>
+          <Link
+            to="/leaderboard"
+            className="font-rajdhani font-semibold"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              borderRadius: '6px',
+              border: '1px solid rgba(234,179,8,0.2)',
+              background: 'rgba(255,255,255,0.05)',
+              padding: 'clamp(12px, 1.5vw, 16px) clamp(24px, 4vw, 40px)',
+              fontSize: 'clamp(12px, 1.5vw, 16px)',
+              letterSpacing: '0.2em',
+              textTransform: 'uppercase',
+              color: '#fde047',
+              textDecoration: 'none',
+            }}
+          >
+            LEADERBOARD
+          </Link>
         </div>
       </section>
 
-      <section className="relative z-10 max-w-7xl mx-auto px-4 pb-16">
-        <div className="premium-panel rounded-[36px] p-8">
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4 mb-8">
+      {/* ── STATS ── */}
+      <section style={{ padding: 'clamp(40px, 6vw, 80px) clamp(16px, 4vw, 48px)' }}>
+        <div style={{ maxWidth: '75%', margin: '0 auto' }}>
+
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))',
+            gap: 'clamp(12px, 2vw, 20px)',
+            marginBottom: 'clamp(20px, 3vw, 40px)',
+          }}>
             {[
-              { label: 'Total Players', value: players.length, icon: '👤' },
-              { label: 'Online Now', value: onlineCount, icon: '🟢' },
-              { label: 'Adaptive RTP', value: 'Dynamic', icon: '🧠' },
-              { label: 'Realtime', value: 'Socket.IO', icon: '⚡' },
+              { label: 'Total Players', value: players.length},
+              { label: 'Online Now',    value: onlineCount},
             ].map((item) => (
-              <div key={item.label} className="pill-card p-5 flex flex-col items-center justify-center text-center gap-2 min-h-[140px]">
-                <div className="text-2xl">{item.icon}</div>
-                <div className="text-xl font-orbitron font-black text-white">{item.value}</div>
-                <div className="text-xs uppercase tracking-[0.3em] text-gray-400 font-rajdhani">{item.label}</div>
+              <div key={item.label} className="pill-card" style={{
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                textAlign: 'center',
+                gap: '8px',
+                padding: 'clamp(16px, 2vw, 24px)',
+                minHeight: '120px',
+              }}>            
+                <div className="font-orbitron font-black text-white" style={{ fontSize: 'clamp(28px, 2vw, 32px)' }}>{item.value}</div>
+                <div className="font-rajdhani text-gray-400" style={{ fontSize: 'clamp(15px, 1vw, 18px)', textTransform: 'uppercase', letterSpacing: '0.3em' }}>{item.label}</div>
               </div>
             ))}
           </div>
 
-          <div className="grid gap-5 grid-cols-1 sm:grid-cols-2 xl:grid-cols-5">
+          {/* ── GAMES ── */}
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
+            gap: 'clamp(12px, 2vw, 20px)',
+          }}>
             {[
-              { title: 'SLOTS', detail: 'Classic slot machine', icon: '🎰' },
-              { title: 'ROULETTE', detail: 'Spin the wheel', icon: '🎡' },
-              { title: 'COIN FLIP', detail: 'Heads or tails', icon: '🪙' },
-              { title: 'DICE', detail: 'Roll and win', icon: '🎲' },
-              { title: 'CARDS', detail: 'Draw and win', icon: '🂡' },
+              { title: 'SLOTS',     detail: 'Classic slot machine' },
+              { title: 'ROULETTE', detail: 'Spin the wheel'        },
+              { title: 'COIN FLIP',detail: 'Heads or tails'        },
+              { title: 'DICE',     detail: 'Roll and win'          },
+              { title: 'CARDS',    detail: 'Draw and win'          },
             ].map((game) => (
-              <div key={game.title} className="glass border border-white/10 rounded-[28px] p-6 flex flex-col items-center justify-between text-center gap-4 min-h-[250px] hover:border-yellow-500/30 transition-all duration-300">
-                <div className="text-5xl mb-2">{game.icon}</div>
-                <div>
-                  <div className="font-orbitron text-xl font-black text-white mb-2">{game.title}</div>
-                  <div className="text-sm text-gray-400 font-rajdhani">{game.detail}</div>
+              <Link
+                key={game.title}
+                to="/games"
+                className="glass"
+                style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  textAlign: 'center',
+                  gap: '10px',
+                  border: '1px solid rgba(255,255,255,0.1)',
+                  borderRadius: '24px',
+                  padding: 'clamp(16px, 2.5vw, 28px) clamp(12px, 2vw, 20px)',
+                  textDecoration: 'none',
+                  transition: 'border-color 0.3s',
+                }}
+              >
+                <div className="font-orbitron font-black text-white" style={{ fontSize: 'clamp(13px, 1.8vw, 22px)', letterSpacing: '0.08em' }}>
+                  {game.title}
                 </div>
-                <Link
-                  to="/games"
-                  className="inline-flex items-center justify-center rounded-full bg-gradient-to-r from-yellow-500 to-orange-500 px-6 py-3 text-sm font-bold uppercase tracking-[0.2em] text-black"
-                >
-                  PLAY NOW
-                </Link>
-              </div>
+                <div className="font-rajdhani text-gray-400" style={{ fontSize: 'clamp(11px, 1.2vw, 14px)' }}>
+                  {game.detail}
+                </div>
+              </Link>
             ))}
           </div>
         </div>
       </section>
 
-      <section className="relative z-10 max-w-6xl mx-auto px-4 pb-24">
-        <div className="premium-panel rounded-[40px] p-10">
-          <div className="grid gap-10 xl:grid-cols-[1.45fr_0.95fr] items-start">
-            <div className="glass border border-yellow-500/20 rounded-[32px] p-8">
-              <div className="flex flex-col gap-3 text-center mb-8">
-                <div className="text-sm uppercase tracking-[0.35em] text-yellow-300 font-semibold">Ready to Spin</div>
-                <h2 className="font-orbitron text-4xl font-black text-white">Casino floor preview</h2>
-                <p className="text-gray-400 font-rajdhani max-w-2xl mx-auto">
+      {/* ── FLOOR PREVIEW ── */}
+      <section style={{ padding: 'clamp(40px, 6vw, 80px) clamp(16px, 4vw, 48px)' }}>
+        <div style={{ maxWidth: '900px', margin: '0 auto' }}>
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+            gap: 'clamp(16px, 2.5vw, 28px)',
+            alignItems: 'start',
+          }}>
+
+            {/* Left — CTA */}
+            <div className="glass" style={{
+              border: '1px solid rgba(234,179,8,0.2)',
+              borderRadius: '28px',
+              padding: 'clamp(24px, 3vw, 40px)',
+            }}>
+              <div style={{ textAlign: 'center', marginBottom: '28px' }}>
+                <div className="font-rajdhani font-semibold" style={{
+                  fontSize: '11px',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.35em',
+                  color: '#fde047',
+                  marginBottom: '8px',
+                }}>
+                  Ready to Spin
+                </div>
+                <h2 className="font-orbitron font-black text-white" style={{
+                  fontSize: 'clamp(20px, 3vw, 36px)',
+                  marginBottom: '10px',
+                }}>
+                  Casino floor preview
+                </h2>
+                <p className="font-rajdhani text-gray-400" style={{ fontSize: 'clamp(13px, 1.5vw, 15px)', lineHeight: 1.6 }}>
                   Explore a larger, centered spin interface built for premium casino flow and cinematic momentum.
                 </p>
               </div>
 
-              <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
-                <div className="flex-1 glass border border-white/10 rounded-[32px] p-6">
-                  <div className="text-xs uppercase tracking-[0.35em] text-gray-400 mb-3">Current balance</div>
-                  <div className="text-4xl font-orbitron font-black text-yellow-300">{currentPlayer?.balance?.toLocaleString()} 🪙</div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px', marginBottom: '28px' }}>
+                <div className="glass" style={{ flex: '1 1 120px', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '20px', padding: '20px' }}>
+                  <div className="font-rajdhani text-gray-400" style={{ fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.35em', marginBottom: '8px' }}>Current balance</div>
+                  <div className="flex justify-center font-orbitron font-black text-yellow-300" style={{ fontSize: 'clamp(18px, 2.5vw, 28px)' }}>
+                    {currentPlayer?.balance?.toLocaleString() ?? '—'} 
+                  </div>
                 </div>
-                <div className="flex-1 glass border border-white/10 rounded-[32px] p-6">
-                  <div className="text-xs uppercase tracking-[0.35em] text-gray-400 mb-3">Hot streak</div>
-                  <div className="text-4xl font-orbitron font-black text-cyan-300">{Math.max(1, Math.floor(players.length / 3))}x</div>
+                <div className="flex flex-col items-center justify-center glass" style={{ flex: '1 1 120px', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '20px', padding: '20px' }}>
+                  <div className=" font-rajdhani text-gray-400" style={{ fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.35em', marginBottom: '8px' }}>Hot streak</div>
+                  <div className="font-orbitron font-black text-cyan-300" style={{ fontSize: 'clamp(18px, 2.5vw, 28px)' }}>
+                    {Math.max(1, Math.floor(players.length / 3))}×
+                  </div>
                 </div>
               </div>
 
-              <div className="mt-8 flex flex-col gap-4 md:flex-row md:items-center md:justify-center">
+              <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'center', gap: '16px' }}>
                 <Link
                   to="/games"
-                  className="inline-flex items-center justify-center gap-3 rounded-full bg-gradient-to-r from-yellow-500 to-orange-500 px-10 py-4 text-base font-orbitron font-black uppercase tracking-[0.2em] text-black shadow-[0_25px_80px_rgba(245,197,24,0.18)]"
+                  className="font-orbitron font-black"
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    borderRadius: '999px',
+                    background: 'linear-gradient(to right, #eab308, #f97316)',
+                    padding: '14px 32px',
+                    fontSize: 'clamp(11px, 1.3vw, 14px)',
+                    letterSpacing: '0.2em',
+                    textTransform: 'uppercase',
+                    color: '#000',
+                    textDecoration: 'none',
+                    boxShadow: '0 25px 80px rgba(245,197,24,0.18)',
+                  }}
                 >
                   START GAMING
                 </Link>
-                <div className="text-sm text-gray-400 font-rajdhani uppercase tracking-[0.25em] text-center">
+                <p className="font-rajdhani text-gray-400" style={{ fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.25em' }}>
                   Secure • Fair • Transparent
+                </p>
+              </div>
+            </div>
+
+            {/* Right — session stats */}
+            <div className="glass" style={{
+              border: '1px solid rgba(255,255,255,0.1)',
+              borderRadius: '28px',
+              padding: 'clamp(24px, 3vw, 40px)',
+            }}>
+              <div className="font-rajdhani text-gray-400" style={{ fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.35em', marginBottom: '16px' }}>
+                Session stats
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '20px' }}>
+                {[
+                  { label: 'Win rate',    value: '57.4%', color: '#fde047' },
+                  { label: 'RTP',         value: '57%',   color: '#67e8f9' },
+                  { label: 'Win streak',  value: '3',     color: '#86efac' },
+                  { label: 'Lose streak', value: '1',     color: '#fca5a5' },
+                ].map((s) => (
+                  <div key={s.label} className="pill-card" style={{ padding: '16px', textAlign: 'center' }}>
+                    <div className="font-rajdhani text-gray-400" style={{ fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.25em', marginBottom: '4px' }}>
+                      {s.label}
+                    </div>
+                    <div className="font-orbitron font-black" style={{ fontSize: 'clamp(16px, 2.2vw, 24px)', color: s.color }}>
+                      {s.value}
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div style={{ border: '1px solid rgba(255,255,255,0.1)', borderRadius: '20px', background: 'rgba(255,255,255,0.05)', padding: '16px' }}>
+                <div className="font-rajdhani text-gray-400" style={{ fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.35em', marginBottom: '12px' }}>
+                  Recent outcomes
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                  {[
+                    { result: 'Win',  value: '+250.00', color: '#86efac' },
+                    { result: 'Lose', value: '-100.00', color: '#f87171' },
+                    { result: 'Win',  value: '+180.00', color: '#86efac' },
+                    { result: 'Win',  value: '+300.00', color: '#86efac' },
+                    { result: 'Lose', value: '-100.00', color: '#f87171' },
+                  ].map((o, i) => (
+                    <div key={i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <span className="font-rajdhani" style={{ fontSize: '14px', color: 'rgba(255,255,255,0.8)' }}>{o.result}</span>
+                      <span className="font-rajdhani font-semibold" style={{ fontSize: '14px', color: o.color }}>{o.value}</span>
+                    </div>
+                  ))}
                 </div>
               </div>
             </div>
 
-            <div className="glass border border-white/10 rounded-[32px] p-8">
-              <div className="mb-6">
-                <div className="text-xs uppercase tracking-[0.35em] text-gray-400 mb-3">Session stats</div>
-                <div className="grid gap-4 grid-cols-2">
-                  <div className="pill-card p-4 text-center">
-                    <div className="text-xs uppercase tracking-[0.25em] text-gray-400">Win rate</div>
-                    <div className="text-3xl font-orbitron font-black text-yellow-300">57.4%</div>
-                  </div>
-                  <div className="pill-card p-4 text-center">
-                    <div className="text-xs uppercase tracking-[0.25em] text-gray-400">RTP</div>
-                    <div className="text-3xl font-orbitron font-black text-cyan-300">57%</div>
-                  </div>
-                  <div className="pill-card p-4 text-center">
-                    <div className="text-xs uppercase tracking-[0.25em] text-gray-400">Win streak</div>
-                    <div className="text-3xl font-orbitron font-black text-green-300">3</div>
-                  </div>
-                  <div className="pill-card p-4 text-center">
-                    <div className="text-xs uppercase tracking-[0.25em] text-gray-400">Lose streak</div>
-                    <div className="text-3xl font-orbitron font-black text-red-300">1</div>
-                  </div>
-                </div>
-              </div>
-
-              <div className="rounded-[28px] border border-white/10 bg-white/5 p-5">
-                <div className="text-xs uppercase tracking-[0.35em] text-gray-400 mb-3">Recent outcomes</div>
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between text-sm text-white/90">
-                    <span>Win</span>
-                    <span className="text-green-300">+250.00</span>
-                  </div>
-                  <div className="flex items-center justify-between text-sm text-white/90">
-                    <span>Lose</span>
-                    <span className="text-red-400">-100.00</span>
-                  </div>
-                  <div className="flex items-center justify-between text-sm text-white/90">
-                    <span>Win</span>
-                    <span className="text-green-300">+180.00</span>
-                  </div>
-                  <div className="flex items-center justify-between text-sm text-white/90">
-                    <span>Win</span>
-                    <span className="text-green-300">+300.00</span>
-                  </div>
-                  <div className="flex items-center justify-between text-sm text-white/90">
-                    <span>Lose</span>
-                    <span className="text-red-400">-100.00</span>
-                  </div>
-                </div>
-              </div>
-            </div>
           </div>
         </div>
       </section>
+
     </div>
   );
 }

@@ -1,95 +1,256 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { usePlayerStore, useAuthStore } from '../store';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 const NAV_LINKS = [
-  { path: '/', label: 'Home', icon: '🏠' },
-  { path: '/casino', label: 'Casino', icon: '🎰' },
-  { path: '/games', label: 'Games', icon: '🎮' },
-  { path: '/leaderboard', label: 'Leaderboard', icon: '🏆' },
-  { path: '/analytics', label: 'Analytics', icon: '📊' },
-  { path: '/admin', label: 'Admin', icon: '⚙️' },
+  { path: '/',            label: 'Home'        },
+  { path: '/casino',      label: 'Casino'      },
+  { path: '/games',       label: 'Games'       },
+  { path: '/leaderboard', label: 'Leaderboard' },
+  { path: '/analytics',   label: 'Analytics'   },
+  { path: '/admin',       label: 'Admin'       },
 ];
 
 export default function Navbar() {
-  const location = useLocation();
-  const navigate = useNavigate();
-  const { currentPlayer } = usePlayerStore();
-  const { user, logout } = useAuthStore();
+  const location  = useLocation();
+  const navigate  = useNavigate();
+  const { currentPlayer }  = usePlayerStore();
+  const { user, logout }   = useAuthStore();
   const [showPlayerSelect, setShowPlayerSelect] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 900);
+
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth < 900);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   const handleLogout = () => {
     logout();
     navigate('/login');
+    setMenuOpen(false);
   };
 
   return (
-    <nav className="fixed top-0 left-0 right-0 z-50 glass bg-slate-950/80 border-b border-yellow-500/10 backdrop-blur-2xl shadow-xl">
-      <div className="max-w-7xl mx-auto px-4 flex items-center justify-between h-20">
+    <nav style={{
+      position: 'sticky',
+      top: 0,
+      zIndex: 50,
+      borderBottom: '1px solid rgba(234,179,8,0.1)',
+      backdropFilter: 'blur(24px)',
+      boxShadow: '0 4px 32px rgba(0,0,0,0.4)',
+    }} className="glass bg-slate-950/80">
+      <div style={{
+        maxWidth: '1280px',
+        margin: '0 auto',
+        padding: '0 clamp(16px, 3vw, 40px)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        height: '64px',
+      }}>
+
         {/* Logo */}
-        <Link to="/" className="flex items-center gap-3">
-          <div className="relative w-12 h-12 rounded-2xl overflow-hidden border border-yellow-500/30 bg-black/40 flex items-center justify-center">
-            <img src="/logo.png" alt="Jokris99 logo" className="h-10 w-auto object-contain" />
+        <Link to="/" style={{ display: 'flex', alignItems: 'center', gap: '10px', textDecoration: 'none', flexShrink: 0 }}>
+          <div style={{
+            width: '36px', height: '36px', borderRadius: '8px',
+            overflow: 'hidden', border: '1px solid rgba(234,179,8,0.3)',
+            background: 'rgba(0,0,0,0.4)', display: 'flex',
+            alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+          }}>
+            <img src="/logo.png" alt="Jokris99 logo" style={{ height: '80%', width: 'auto', objectFit: 'contain' }} />
           </div>
-          <span className="font-orbitron font-bold text-lg gradient-text-gold tracking-[0.2em]">JOKRIS99</span>
+          <span className="font-orbitron font-bold gradient-text-gold" style={{ fontSize: '15px', letterSpacing: '0.2em' }}>
+            JOKRIS99
+          </span>
         </Link>
 
-        {/* Nav links */}
-        <div className="hidden md:flex items-center gap-2">
-          {NAV_LINKS.map((link) => (
-            <Link
-              key={link.path}
-              to={link.path}
-              className={`px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 flex items-center gap-1.5 font-rajdhani
-                ${location.pathname === link.path
-                  ? 'bg-yellow-500/15 text-yellow-400 border border-yellow-500/30'
-                  : 'text-gray-400 hover:text-yellow-400 hover:bg-yellow-500/10'
-                }`}
-            >
-              <span>{link.icon}</span>
-              {link.label}
-            </Link>
-          ))}
-        </div>
+        {/* Desktop nav links — only when NOT mobile */}
+        {!isMobile && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '2px' }}>
+            {NAV_LINKS.map((link) => (
+              <Link
+                key={link.path}
+                to={link.path}
+                className="font-rajdhani"
+                style={{
+                  padding: '7px 13px',
+                  borderRadius: '8px',
+                  fontSize: '13px',
+                  fontWeight: 500,
+                  display: 'flex',
+                  alignItems: 'center',
+                  textDecoration: 'none',
+                  transition: 'all 0.2s',
+                  letterSpacing: '0.05em',
+                  whiteSpace: 'nowrap',
+                  ...(location.pathname === link.path
+                    ? { background: 'rgba(234,179,8,0.15)', color: '#facc15', border: '1px solid rgba(234,179,8,0.3)' }
+                    : { color: '#9ca3af', border: '1px solid transparent' }),
+                }}
+                onMouseOver={e => {
+                  if (location.pathname !== link.path) {
+                    e.currentTarget.style.color = '#facc15';
+                    e.currentTarget.style.background = 'rgba(234,179,8,0.08)';
+                  }
+                }}
+                onMouseOut={e => {
+                  if (location.pathname !== link.path) {
+                    e.currentTarget.style.color = '#9ca3af';
+                    e.currentTarget.style.background = 'transparent';
+                  }
+                }}
+              >
+                {link.label}
+              </Link>
+            ))}
+          </div>
+        )}
 
         {/* Right side */}
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2 glass px-4 py-2 rounded-full">
-            <span className="w-2.5 h-2.5 rounded-full bg-green-400 animate-pulse" />
-            <span className="text-xs text-gray-300 font-rajdhani uppercase tracking-[0.3em]">online</span>
-          </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexShrink: 0 }}>
 
-          <div className="relative">
-            <button
-              onClick={() => setShowPlayerSelect(!showPlayerSelect)}
-              className="glass-gold px-4 py-2 rounded-full flex items-center gap-3 text-sm hover:glow-gold transition-all"
-            >
-              <span className="text-yellow-300 font-rajdhani font-semibold">
-                {user ? user.username : 'User'}
-              </span>
-              {currentPlayer && (
-                <span className="text-green-300 font-rajdhani text-xs uppercase tracking-[0.2em]">
-                  {currentPlayer.balance?.toLocaleString()} 🪙
+          {/* Player button — desktop only */}
+          {!isMobile && (
+            <div style={{ position: 'relative' }}>
+              <button
+                onClick={() => setShowPlayerSelect(!showPlayerSelect)}
+                className="glass-gold"
+                style={{
+                  display: 'flex', alignItems: 'center', gap: '10px',
+                  padding: '7px 16px', borderRadius: '8px', fontSize: '13px',
+                  cursor: 'pointer', border: '1px solid rgba(234,179,8,0.25)',
+                  background: 'rgba(234,179,8,0.08)', transition: 'all 0.2s',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                <span className="font-rajdhani font-semibold" style={{ color: '#fde047' }}>
+                  {user ? user.username : 'User'}
                 </span>
-              )}
-              <span className="text-gray-400 text-xs">▼</span>
-            </button>
+                {currentPlayer && (
+                  <span className="font-rajdhani" style={{ color: '#86efac', fontSize: '12px' }}>
+                    {currentPlayer.balance?.toLocaleString()} 🪙
+                  </span>
+                )}
+                <span style={{ color: '#9ca3af', fontSize: '10px' }}>▼</span>
+              </button>
 
-            {showPlayerSelect && (
-              <div className="absolute right-0 top-14 w-64 glass border border-yellow-500/20 rounded-3xl overflow-hidden z-50 shadow-2xl">
-                <div className="p-2">
-                  <button
-                    onClick={handleLogout}
-                    className="w-full text-left px-4 py-3 rounded-2xl text-red-400 hover:bg-red-500/10 transition-colors font-rajdhani"
-                  >
-                    Logout
-                  </button>
+              {showPlayerSelect && (
+                <div className="glass" style={{
+                  position: 'absolute', right: 0, top: 'calc(100% + 8px)',
+                  width: '180px', border: '1px solid rgba(234,179,8,0.2)',
+                  borderRadius: '10px', overflow: 'hidden', zIndex: 100,
+                  boxShadow: '0 20px 60px rgba(0,0,0,0.5)',
+                }}>
+                  <div style={{ padding: '6px' }}>
+                    <button
+                      onClick={handleLogout}
+                      className="font-rajdhani"
+                      style={{
+                        width: '100%', textAlign: 'left', padding: '10px 14px',
+                        borderRadius: '6px', color: '#f87171', background: 'transparent',
+                        border: 'none', cursor: 'pointer', fontSize: '14px',
+                      }}
+                      onMouseOver={e => e.currentTarget.style.background = 'rgba(239,68,68,0.1)'}
+                      onMouseOut={e => e.currentTarget.style.background = 'transparent'}
+                    >
+                      Logout
+                    </button>
+                  </div>
                 </div>
-              </div>
-            )}
-          </div>
+              )}
+            </div>
+          )}
+
+          {/* Hamburger — mobile only */}
+          {isMobile && (
+            <button
+              onClick={() => setMenuOpen(!menuOpen)}
+              style={{
+                display: 'flex', flexDirection: 'column', justifyContent: 'center',
+                alignItems: 'center', gap: '5px', width: '38px', height: '38px',
+                background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)',
+                borderRadius: '8px', cursor: 'pointer', padding: '8px', flexShrink: 0,
+              }}
+              aria-label="Toggle menu"
+            >
+              <span style={{
+                display: 'block', width: '18px', height: '1.5px',
+                background: menuOpen ? '#fde047' : '#9ca3af', transition: 'all 0.25s',
+                transform: menuOpen ? 'translateY(6.5px) rotate(45deg)' : 'none',
+              }} />
+              <span style={{
+                display: 'block', width: '18px', height: '1.5px',
+                background: menuOpen ? 'transparent' : '#9ca3af', transition: 'all 0.25s',
+              }} />
+              <span style={{
+                display: 'block', width: '18px', height: '1.5px',
+                background: menuOpen ? '#fde047' : '#9ca3af', transition: 'all 0.25s',
+                transform: menuOpen ? 'translateY(-6.5px) rotate(-45deg)' : 'none',
+              }} />
+            </button>
+          )}
+
         </div>
       </div>
+
+      {/* Mobile dropdown menu */}
+      {isMobile && menuOpen && (
+        <div style={{
+          borderTop: '1px solid rgba(234,179,8,0.1)',
+          padding: '12px 16px 20px',
+        }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginBottom: '16px' }}>
+            {NAV_LINKS.map((link) => (
+              <Link
+                key={link.path}
+                to={link.path}
+                className="font-rajdhani"
+                onClick={() => setMenuOpen(false)}
+                style={{
+                  padding: '12px 16px', borderRadius: '8px', fontSize: '15px',
+                  fontWeight: 500, textDecoration: 'none', letterSpacing: '0.05em',
+                  transition: 'all 0.2s',
+                  ...(location.pathname === link.path
+                    ? { background: 'rgba(234,179,8,0.15)', color: '#facc15', border: '1px solid rgba(234,179,8,0.3)' }
+                    : { color: '#9ca3af', border: '1px solid transparent' }),
+                }}
+              >
+                {link.label}
+              </Link>
+            ))}
+          </div>
+
+          <div style={{
+            border: '1px solid rgba(234,179,8,0.2)', borderRadius: '10px',
+            padding: '14px 16px', background: 'rgba(234,179,8,0.05)',
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          }}>
+            <div>
+              <div className="font-rajdhani font-semibold" style={{ color: '#fde047', fontSize: '14px' }}>
+                {user ? user.username : 'User'}
+              </div>
+              {currentPlayer && (
+                <div className="font-rajdhani" style={{ color: '#86efac', fontSize: '12px', marginTop: '2px' }}>
+                  {currentPlayer.balance?.toLocaleString()} 🪙
+                </div>
+              )}
+            </div>
+            <button
+              onClick={handleLogout}
+              className="font-rajdhani"
+              style={{
+                padding: '8px 16px', borderRadius: '6px', fontSize: '13px',
+                color: '#f87171', background: 'rgba(239,68,68,0.1)',
+                border: '1px solid rgba(239,68,68,0.2)', cursor: 'pointer',
+              }}
+            >
+              Logout
+            </button>
+          </div>
+        </div>
+      )}
     </nav>
   );
 }

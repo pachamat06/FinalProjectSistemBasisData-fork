@@ -1,13 +1,43 @@
-# Node modules
-/backend/node_modules
-/frontend/node_modules
+# Dependencies
+**/node_modules/
+.pnp
+.pnp.js
 
-# Environment files
-*.env
+# Environment Files (CRITICAL)
+**/.env*
 .env.local
+.env.development.local
+.env.test.local
+.env.production.local
 
-# Build output
-/dist
+# Build Outputs
+**/dist/
+**/build/
+**/out/
+**/.next/
+**/bin/
+**/obj/
 
-# OS files
+# Debug and Logs
+**/npm-debug.log*
+**/yarn-debug.log*
+**/yarn-error.log*
+**/.pnpm-debug.log*
+**/logs/
+*.log
+
+# OS Files
 .DS_Store
+Thumbs.db
+*.swp
+
+# IDEs/Editors
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# Database/Local Cache
+**/.turbo/
+**/.cache/
+**/.eslintcache
