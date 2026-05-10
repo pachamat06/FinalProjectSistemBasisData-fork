@@ -6,7 +6,7 @@ export function useSocketEvents(playerId) {
   const { setLeaderboard, setRecentWins } = useLeaderboardStore();
   const { setOnlineCount, addFeedItem } = useSystemStore();
   const { addResult, setNotification } = useGameStore();
-  const { updateBalance, refreshPlayer } = usePlayerStore();
+  //const { updateBalance, refreshPlayer } = usePlayerStore();
 
   useEffect(() => {
     if (!playerId) return;
@@ -18,7 +18,7 @@ export function useSocketEvents(playerId) {
 
     socket.on('player:win', (result) => {
       addResult(result);
-      updateBalance(result.newBalance);
+      //updateBalance(result.newBalance);
       if (result.isBigWin) {
         setNotification({ type: 'bigwin', message: `💰 BIG WIN! +${result.payout.toFixed(0)} coins!` });
       }
@@ -26,12 +26,12 @@ export function useSocketEvents(playerId) {
 
     socket.on('player:lose', (result) => {
       addResult(result);
-      updateBalance(result.newBalance);
+      //updateBalance(result.newBalance);
     });
 
-    socket.on('player:balance', ({ newBalance, playerId: pid }) => {
-      if (pid === playerId) updateBalance(newBalance);
-    });
+    //socket.on('player:balance', ({ newBalance, playerId: pid }) => {
+      //if (pid === playerId) updateBalance(newBalance);
+    //});
 
     socket.on('system:bigWin', ({ username, payout }) => {
       addFeedItem({ type: 'bigwin', username, payout, timestamp: Date.now() });
