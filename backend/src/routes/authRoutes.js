@@ -86,27 +86,50 @@ router.post('/login', async (req, res) => {
 // Guest login
 router.post('/guest', async (req, res) => {
   try {
-    // Generate guest username
-    const guestUsername = `Guest${Math.floor(Math.random() * 10000)}`;
+    const MAX_GUEST_ATTEMPTS = 5;
+    let user = null;
+    let player = null;
 
-    // Create guest user
-    const user = await prisma.user.create({
-      data: {
-        username: guestUsername,
-        email: `${guestUsername}@guest.com`,
-        passwordHash: '', // No password for guests
-        guestAccount: true
-      }
-    });
+    for (let attempt = 0; attempt < MAX_GUEST_ATTEMPTS; attempt++) {
+      const guestSuffix = `${Date.now().toString(36)}${Math.floor(Math.random() * 1000).toString(36)}`;
+      const guestUsername = `Guest${guestSuffix}`;
 
-    // Create player profile
-    const player = await prisma.player.create({
-      data: {
-        userId: user.id,
-        username: user.username,
-        balance: 10000
+      try {
+        const result = await prisma.$transaction(async (tx) => {
+          const createdUser = await tx.user.create({
+            data: {
+              username: guestUsername,
+              email: `${guestUsername}@guest.com`,
+              passwordHash: '', // No password for guests
+              guestAccount: true
+            }
+          });
+
+          const createdPlayer = await tx.player.create({
+            data: {
+              userId: createdUser.id,
+              username: createdUser.username,
+              balance: 10000
+            }
+          });
+
+          return { user: createdUser, player: createdPlayer };
+        });
+
+        user = result.user;
+        player = result.player;
+        break;
+      } catch (error) {
+        if (error.code === 'P2002' && attempt < MAX_GUEST_ATTEMPTS - 1) {
+          continue;
+        }
+        throw error;
       }
-    });
+    }
+
+    if (!user || !player) {
+      return res.status(500).json({ error: 'Guest login failed' });
+    }
 
     // Generate JWT
     const token = jwt.sign({ userId: user.id }, process.env.JWT_SECRET || 'secret', { expiresIn: '1d' });

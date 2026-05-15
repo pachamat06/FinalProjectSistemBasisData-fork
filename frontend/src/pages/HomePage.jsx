@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom';
 import { useEffect } from 'react';
 import { usePlayerStore, useLeaderboardStore, useSystemStore } from '../store';
 import { fetchLeaderboard } from '../services/api';
+import DiceModel from '../components/DiceModel';
 
 export default function HomePage() {
   const { players, loadPlayers, currentPlayer } = usePlayerStore();
@@ -28,14 +29,29 @@ export default function HomePage() {
         padding: 'clamp(80px, 10vw, 120px) clamp(16px, 4vw, 48px) clamp(60px, 8vw, 100px)',
         minHeight: '100vh',
       }}>
-        <h1 className="font-orbitron font-black text-white" style={{
-          fontSize: 'clamp(48px, 10vw, 120px)',
-          letterSpacing: '0.2em',
-          lineHeight: 1,
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: 'clamp(16px, 3vw, 32px)',
+          flexWrap: 'wrap',
           marginBottom: '24px',
         }}>
-          JOKRIS99
-        </h1>
+          <div style={{
+            width: 'clamp(180px, 22vw, 280px)',
+            height: 'clamp(180px, 22vw, 280px)'
+          }}>
+            <DiceModel height="100%" />
+          </div>
+          <h1 className="font-orbitron font-black text-white text-glow-gold" style={{
+            fontSize: 'clamp(48px, 10vw, 120px)',
+            letterSpacing: '0.2em',
+            lineHeight: 1,
+            margin: 0,
+          }}>
+            JOKRIS99
+          </h1>
+        </div>
 
         <p style={{
           color: '#d1d5db',
@@ -98,6 +114,7 @@ export default function HomePage() {
             LEADERBOARD
           </Link>
         </div>
+
       </section>
 
       {/* ── STATS ── */}

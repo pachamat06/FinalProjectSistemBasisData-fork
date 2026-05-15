@@ -29,15 +29,7 @@ function AppInner() {
     init();
   }, []);
 
-  if (!isAuthenticated && !isLoading) {
-    return (
-      <Routes>
-        <Route path="/login" element={<LoginPage />} />
-        <Route path="/register" element={<RegisterPage />} />
-        <Route path="*" element={<Navigate to="/login" />} />
-      </Routes>
-    );
-  }
+  const requireAuth = (element) => (isAuthenticated ? element : <Navigate to="/login" replace />);
 
   return (
     <>
@@ -66,12 +58,15 @@ function AppInner() {
         <Navbar />
         <Routes>
           <Route path="/" element={<HomePage />} />
-          <Route path="/casino" element={<CasinoPage />} />
-          <Route path="/games" element={<GamesPage />} />
-          <Route path="/leaderboard" element={<LeaderboardPage />} />
-          <Route path="/analytics" element={<AnalyticsPage />} />
-          <Route path="/admin" element={<AdminPage />} />
-          <Route path="/welcome" element={<WelcomePage />} />
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/register" element={<RegisterPage />} />
+          <Route path="/casino" element={requireAuth(<CasinoPage />)} />
+          <Route path="/games" element={requireAuth(<GamesPage />)} />
+          <Route path="/leaderboard" element={requireAuth(<LeaderboardPage />)} />
+          <Route path="/analytics" element={requireAuth(<AnalyticsPage />)} />
+          <Route path="/admin" element={requireAuth(<AdminPage />)} />
+          <Route path="/welcome" element={requireAuth(<WelcomePage />)} />
+          <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </div>
     </>
