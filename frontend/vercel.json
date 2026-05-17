@@ -1,0 +1,8 @@
+{
+  "rewrites": [
+    {
+      "source": "/api/:path*",
+      "destination": "https://final-project-sistem-basis-data-g2b6.vercel.app/api/:path*"
+    }
+  ]
+}

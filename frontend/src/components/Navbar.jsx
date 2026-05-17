@@ -4,29 +4,44 @@ import { useState, useEffect } from 'react';
 import ConfirmDialog from './ConfirmDialog';
 import { deleteSelfAccount } from '../services/api';
 
+// ✅ Games dihapus (teman), Hapus Akun tetap ada (kita)
 const NAV_LINKS = [
   { path: '/',            label: 'Home'        },
   { path: '/casino',      label: 'Casino'      },
-  { path: '/games',       label: 'Games'       },
   { path: '/leaderboard', label: 'Leaderboard' },
   { path: '/analytics',   label: 'Analytics'   },
   { path: '/admin',       label: 'Admin'       },
 ];
 
+// Animasi hover tombol gold (teman)
+const goldHoverHandlers = {
+  onMouseOver: (e) => {
+    e.currentTarget.style.background   = 'linear-gradient(to right, #eab308, #f97316)';
+    e.currentTarget.style.color        = '#000';
+    e.currentTarget.style.borderColor  = 'transparent';
+    e.currentTarget.style.boxShadow    = '0 12px 36px rgba(245,197,24,0.25)';
+  },
+  onMouseOut: (e, defaultBg, defaultColor, defaultBorder) => {
+    e.currentTarget.style.background  = defaultBg;
+    e.currentTarget.style.color       = defaultColor;
+    e.currentTarget.style.borderColor = defaultBorder;
+    e.currentTarget.style.boxShadow   = 'none';
+  },
+};
+
 export default function Navbar() {
   const location = useLocation();
   const navigate = useNavigate();
-  const { currentPlayer } = usePlayerStore();
-  const { user, logout }  = useAuthStore();
+  const { currentPlayer }           = usePlayerStore();
+  const { user, logout, isAuthenticated } = useAuthStore();
 
-  const [showDropdown, setShowDropdown] = useState(false);
-  const [menuOpen,     setMenuOpen]     = useState(false);
-  const [isMobile,     setIsMobile]     = useState(false);
+  const [showDropdown,   setShowDropdown]   = useState(false);
+  const [menuOpen,       setMenuOpen]       = useState(false);
+  const [isMobile,       setIsMobile]       = useState(false);
+  const [confirmDelete,  setConfirmDelete]  = useState(false);
+  const [deleting,       setDeleting]       = useState(false);
 
-  // Confirm delete self
-  const [confirmDelete, setConfirmDelete] = useState(false);
-  const [deleting,      setDeleting]      = useState(false);
-
+  // ✅ isMobile via useEffect (kita — fix SSR)
   useEffect(() => {
     const check = () => setIsMobile(window.innerWidth < 900);
     check();
@@ -34,19 +49,21 @@ export default function Navbar() {
     return () => window.removeEventListener('resize', check);
   }, []);
 
-  const handleLogout = () => {
-    logout();
-    navigate('/login');
+  // ✅ Logout → '/' (teman)
+  const handleLogout = async () => {
+    await logout();
+    navigate('/');
     setMenuOpen(false);
     setShowDropdown(false);
   };
 
+  // ✅ Hapus akun sendiri (kita)
   const handleDeleteSelf = async () => {
     setDeleting(true);
     try {
       await deleteSelfAccount();
-      logout();
-      navigate('/login');
+      await logout();
+      navigate('/');
     } catch (err) {
       alert(err.message);
     } finally {
@@ -55,6 +72,7 @@ export default function Navbar() {
     }
   };
 
+  // Desktop user dropdown
   const DropdownMenu = () => (
     <div className="glass" style={{
       position: 'absolute', right: 0, top: 'calc(100% + 8px)',
@@ -63,28 +81,19 @@ export default function Navbar() {
       boxShadow: '0 20px 60px rgba(0,0,0,0.5)',
     }}>
       <div style={{ padding: '6px' }}>
-        {/* User info */}
         <div style={{ padding: '10px 14px 8px', borderBottom: '1px solid rgba(255,255,255,0.06)', marginBottom: '4px' }}>
           <div className="font-rajdhani font-bold" style={{ color: '#fde047', fontSize: '13px' }}>{user?.username}</div>
           <div className="font-rajdhani" style={{ color: '#6b7280', fontSize: '11px' }}>{user?.email}</div>
         </div>
-
-        {/* Logout */}
         <button onClick={handleLogout} className="font-rajdhani"
-          style={{ width: '100%', textAlign: 'left', padding: '9px 14px', borderRadius: '6px', color: '#d1d5db', background: 'transparent', border: 'none', cursor: 'pointer', fontSize: '13px', display: 'block' }}
+          style={{ width: '100%', textAlign: 'left', padding: '9px 14px', borderRadius: '6px', color: '#d1d5db', background: 'transparent', border: 'none', cursor: 'pointer', fontSize: '13px' }}
           onMouseOver={e => e.currentTarget.style.background = 'rgba(255,255,255,0.06)'}
           onMouseOut={e => e.currentTarget.style.background = 'transparent'}>
           🚪 Logout
         </button>
-
-        {/* Divider */}
         <div style={{ height: '1px', background: 'rgba(255,255,255,0.06)', margin: '4px 0' }} />
-
-        {/* Hapus Akun */}
-        <button
-          onClick={() => { setShowDropdown(false); setConfirmDelete(true); }}
-          className="font-rajdhani"
-          style={{ width: '100%', textAlign: 'left', padding: '9px 14px', borderRadius: '6px', color: '#f87171', background: 'transparent', border: 'none', cursor: 'pointer', fontSize: '13px', display: 'block' }}
+        <button onClick={() => { setShowDropdown(false); setConfirmDelete(true); }} className="font-rajdhani"
+          style={{ width: '100%', textAlign: 'left', padding: '9px 14px', borderRadius: '6px', color: '#f87171', background: 'transparent', border: 'none', cursor: 'pointer', fontSize: '13px' }}
           onMouseOver={e => e.currentTarget.style.background = 'rgba(239,68,68,0.08)'}
           onMouseOut={e => e.currentTarget.style.background = 'transparent'}>
           🗑️ Hapus Akun
@@ -95,7 +104,7 @@ export default function Navbar() {
 
   return (
     <>
-      {/* ── Confirm delete self ── */}
+      {/* ✅ ConfirmDialog hapus akun (kita) */}
       <ConfirmDialog
         open={confirmDelete}
         title="Hapus Akun?"
@@ -127,7 +136,7 @@ export default function Navbar() {
             <span className="font-orbitron font-bold gradient-text-gold" style={{ fontSize: '15px', letterSpacing: '0.2em' }}>JOKRIS99</span>
           </Link>
 
-          {/* Desktop nav */}
+          {/* Desktop nav links */}
           {!isMobile && (
             <div style={{ display: 'flex', alignItems: 'center', gap: '2px' }}>
               {NAV_LINKS.map((link) => (
@@ -147,11 +156,29 @@ export default function Navbar() {
             </div>
           )}
 
-          {/* Right */}
+          {/* Right side */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexShrink: 0 }}>
 
-            {/* User button — desktop */}
-            {!isMobile && (
+            {/* ✅ Desktop: Login/Register jika belum auth (teman) */}
+            {!isMobile && !isAuthenticated && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <Link to="/login" className="font-rajdhani"
+                  style={{ padding: '7px 14px', borderRadius: '8px', fontSize: '13px', color: '#facc15', textDecoration: 'none', border: '1px solid rgba(234,179,8,0.3)', background: 'rgba(234,179,8,0.08)', transition: 'background 0.3s,color 0.3s,border-color 0.3s,box-shadow 0.3s' }}
+                  onMouseOver={e => { e.currentTarget.style.background = 'linear-gradient(to right,#eab308,#f97316)'; e.currentTarget.style.color = '#000'; e.currentTarget.style.borderColor = 'transparent'; e.currentTarget.style.boxShadow = '0 12px 36px rgba(245,197,24,0.25)'; }}
+                  onMouseOut={e => { e.currentTarget.style.background = 'rgba(234,179,8,0.08)'; e.currentTarget.style.color = '#facc15'; e.currentTarget.style.borderColor = 'rgba(234,179,8,0.3)'; e.currentTarget.style.boxShadow = 'none'; }}>
+                  Login
+                </Link>
+                <Link to="/register" className="font-rajdhani"
+                  style={{ padding: '7px 14px', borderRadius: '8px', fontSize: '13px', color: '#fff', textDecoration: 'none', border: '1px solid rgba(255,255,255,0.2)', background: 'rgba(255,255,255,0.06)', transition: 'background 0.3s,color 0.3s,border-color 0.3s,box-shadow 0.3s' }}
+                  onMouseOver={e => { e.currentTarget.style.background = 'linear-gradient(to right,#eab308,#f97316)'; e.currentTarget.style.color = '#000'; e.currentTarget.style.borderColor = 'transparent'; e.currentTarget.style.boxShadow = '0 12px 36px rgba(245,197,24,0.25)'; }}
+                  onMouseOut={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.06)'; e.currentTarget.style.color = '#fff'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.2)'; e.currentTarget.style.boxShadow = 'none'; }}>
+                  Register
+                </Link>
+              </div>
+            )}
+
+            {/* ✅ Desktop: User dropdown jika sudah auth (kita + teman) */}
+            {!isMobile && isAuthenticated && (
               <div style={{ position: 'relative' }}>
                 <button onClick={() => setShowDropdown(!showDropdown)} className="glass-gold"
                   style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '7px 16px', borderRadius: '8px', fontSize: '13px', cursor: 'pointer', border: '1px solid rgba(234,179,8,0.25)', background: 'rgba(234,179,8,0.08)', transition: 'all 0.2s', whiteSpace: 'nowrap' }}>
@@ -191,22 +218,41 @@ export default function Navbar() {
               ))}
             </div>
 
-            <div style={{ border: '1px solid rgba(234,179,8,0.2)', borderRadius: '10px', padding: '14px 16px', background: 'rgba(234,179,8,0.05)' }}>
-              <div style={{ marginBottom: '12px' }}>
-                <div className="font-rajdhani font-semibold" style={{ color: '#fde047', fontSize: '14px' }}>{user ? user.username : 'User'}</div>
-                {currentPlayer && <div className="font-rajdhani" style={{ color: '#86efac', fontSize: '12px', marginTop: '2px' }}>{currentPlayer.balance?.toLocaleString()} 🪙</div>}
+            {/* ✅ Mobile: Login/Register jika belum auth (teman) */}
+            {!isAuthenticated ? (
+              <div style={{ display: 'flex', gap: '10px' }}>
+                <Link to="/login" className="font-rajdhani" onClick={() => setMenuOpen(false)}
+                  style={{ flex: 1, padding: '10px 16px', borderRadius: '8px', fontSize: '14px', color: '#facc15', textDecoration: 'none', border: '1px solid rgba(234,179,8,0.3)', background: 'rgba(234,179,8,0.08)', textAlign: 'center', transition: 'all 0.3s' }}
+                  onMouseOver={e => { e.currentTarget.style.background = 'linear-gradient(to right,#eab308,#f97316)'; e.currentTarget.style.color = '#000'; }}
+                  onMouseOut={e => { e.currentTarget.style.background = 'rgba(234,179,8,0.08)'; e.currentTarget.style.color = '#facc15'; }}>
+                  Login
+                </Link>
+                <Link to="/register" className="font-rajdhani" onClick={() => setMenuOpen(false)}
+                  style={{ flex: 1, padding: '10px 16px', borderRadius: '8px', fontSize: '14px', color: '#fff', textDecoration: 'none', border: '1px solid rgba(255,255,255,0.2)', background: 'rgba(255,255,255,0.06)', textAlign: 'center', transition: 'all 0.3s' }}
+                  onMouseOver={e => { e.currentTarget.style.background = 'linear-gradient(to right,#eab308,#f97316)'; e.currentTarget.style.color = '#000'; }}
+                  onMouseOut={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.06)'; e.currentTarget.style.color = '#fff'; }}>
+                  Register
+                </Link>
               </div>
-              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                <button onClick={handleLogout} className="font-rajdhani"
-                  style={{ flex: 1, padding: '8px 12px', borderRadius: '6px', fontSize: '13px', color: '#d1d5db', background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.12)', cursor: 'pointer' }}>
-                  🚪 Logout
-                </button>
-                <button onClick={() => { setMenuOpen(false); setConfirmDelete(true); }} className="font-rajdhani"
-                  style={{ flex: 1, padding: '8px 12px', borderRadius: '6px', fontSize: '13px', color: '#f87171', background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.2)', cursor: 'pointer' }}>
-                  🗑️ Hapus Akun
-                </button>
+            ) : (
+              // ✅ Mobile: user info + Logout + Hapus Akun (kita + teman)
+              <div style={{ border: '1px solid rgba(234,179,8,0.2)', borderRadius: '10px', padding: '14px 16px', background: 'rgba(234,179,8,0.05)' }}>
+                <div style={{ marginBottom: '12px' }}>
+                  <div className="font-rajdhani font-semibold" style={{ color: '#fde047', fontSize: '14px' }}>{user ? user.username : 'User'}</div>
+                  {currentPlayer && <div className="font-rajdhani" style={{ color: '#86efac', fontSize: '12px', marginTop: '2px' }}>{currentPlayer.balance?.toLocaleString()} 🪙</div>}
+                </div>
+                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                  <button onClick={handleLogout} className="font-rajdhani"
+                    style={{ flex: 1, padding: '8px 12px', borderRadius: '6px', fontSize: '13px', color: '#d1d5db', background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.12)', cursor: 'pointer' }}>
+                    🚪 Logout
+                  </button>
+                  <button onClick={() => { setMenuOpen(false); setConfirmDelete(true); }} className="font-rajdhani"
+                    style={{ flex: 1, padding: '8px 12px', borderRadius: '6px', fontSize: '13px', color: '#f87171', background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.2)', cursor: 'pointer' }}>
+                    🗑️ Hapus Akun
+                  </button>
+                </div>
               </div>
-            </div>
+            )}
           </div>
         )}
       </nav>

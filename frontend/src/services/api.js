@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || '/api',
+  baseURL: 'https://final-project-sistem-basis-data-g2b6.vercel.app/api',
   timeout: 15000,
   headers: { 'Content-Type': 'application/json' },
 });

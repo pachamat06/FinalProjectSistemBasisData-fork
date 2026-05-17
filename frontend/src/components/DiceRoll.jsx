@@ -1,95 +1,290 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import * as THREE from 'three';
+import * as CANNON from 'cannon-es';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 
-export default function DiceRoll({ onBet }) {
-  const [rolling, setRolling] = useState(false);
-  const [predictions, setPredictions] = useState({});
-  const [result, setResult] = useState(null);
+const DICE_PARAMS = {
+  numberOfDice: 2,
+  scale: 1.2,
+};
 
-  const handleRoll = async () => {
-    const hasSelection = Object.values(predictions).some(v => v);
-    if (!hasSelection || rolling) return;
-    
-    setRolling(true);
-    
-    // Animate dice
-    for (let i = 0; i < 15; i++) {
-      await new Promise(r => setTimeout(r, 50));
-    }
-    
-    const dice1 = Math.floor(Math.random() * 6) + 1;
-    const dice2 = Math.floor(Math.random() * 6) + 1;
-    const total = dice1 + dice2;
-    
-    const isWin = 
-      (predictions.low && total <= 7) ||
-      (predictions.high && total >= 8) ||
-      (predictions.lucky7 && total === 7) ||
-      (predictions.snake && total === 2) ||
-      (predictions.boxcars && total === 12);
-    
-    setResult({ dice1, dice2, total, isWin });
-    setRolling(false);
+const EPS = 0.1;
 
-    if (onBet) {
-      onBet({
-        game: 'dice',
-        bet: Object.keys(predictions).filter(k => predictions[k]),
-        result: total,
-        win: isWin,
-        payout: isWin ? 2 : 0
+const isNear = (value, target) => Math.abs(value - target) < EPS;
+
+const getDiceResult = (euler) => {
+  const isZero = (angle) => Math.abs(angle) < EPS;
+  const isHalfPi = (angle) => isNear(angle, 0.5 * Math.PI);
+  const isMinusHalfPi = (angle) => isNear(angle, -0.5 * Math.PI);
+  const isPiOrMinusPi = (angle) => isNear(Math.abs(angle), Math.PI);
+
+  if (isZero(euler.z)) {
+    if (isZero(euler.x)) return 1;
+    if (isHalfPi(euler.x)) return 4;
+    if (isMinusHalfPi(euler.x)) return 3;
+    if (isPiOrMinusPi(euler.x)) return 6;
+    return null;
+  }
+
+  if (isHalfPi(euler.z)) return 2;
+  if (isMinusHalfPi(euler.z)) return 5;
+  return null;
+};
+
+export default function DiceRoll() {
+  const wrapperRef = useRef(null);
+  const canvasRef = useRef(null);
+  const diceRef = useRef([]);
+  const throwRef = useRef(() => {});
+  const rafRef = useRef(null);
+  const scoreRef = useRef([]);
+  const [score, setScore] = useState('');
+
+  useEffect(() => {
+    if (!canvasRef.current || !wrapperRef.current) return undefined;
+
+    const renderer = new THREE.WebGLRenderer({
+      alpha: true,
+      antialias: true,
+      canvas: canvasRef.current,
+    });
+    renderer.shadowMap.enabled = true;
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(45, 1, 0.1, 300);
+    camera.position.set(0, 0.5, 4).multiplyScalar(7);
+
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.35);
+    const topLight = new THREE.PointLight(0xffffff, 0.85);
+    topLight.position.set(12, 18, 6);
+    topLight.castShadow = true;
+    topLight.shadow.mapSize.width = 2048;
+    topLight.shadow.mapSize.height = 2048;
+    topLight.shadow.camera.near = 4;
+    topLight.shadow.camera.far = 450;
+
+    const spotlight = new THREE.SpotLight(0xffffff, 1.2, 120, Math.PI * 0.22, 0.25, 1.15);
+    spotlight.position.set(0, 22, 0);
+    spotlight.target.position.set(0, 0, 0);
+    spotlight.castShadow = true;
+    spotlight.shadow.mapSize.width = 2048;
+    spotlight.shadow.mapSize.height = 2048;
+    scene.add(ambientLight, topLight, spotlight, spotlight.target);
+
+    const world = new CANNON.World({
+      allowSleep: true,
+      gravity: new CANNON.Vec3(0, -50, 0),
+    });
+    world.defaultContactMaterial.restitution = 0.3;
+
+    const floor = new THREE.Mesh(
+      new THREE.PlaneGeometry(1000, 1000),
+      new THREE.ShadowMaterial({ opacity: 0.1 })
+    );
+    floor.receiveShadow = true;
+    floor.position.y = -4.5;
+    floor.quaternion.setFromAxisAngle(new THREE.Vector3(-1, 0, 0), Math.PI * 0.5);
+    scene.add(floor);
+
+    const floorBody = new CANNON.Body({
+      type: CANNON.Body.STATIC,
+      shape: new CANNON.Plane(),
+    });
+    floorBody.position.copy(floor.position);
+    floorBody.quaternion.copy(floor.quaternion);
+    world.addBody(floorBody);
+
+    diceRef.current = [];
+
+    const showRollResults = (value) => {
+      scoreRef.current = [...scoreRef.current, value];
+      setScore(scoreRef.current.join('+'));
+    };
+
+    const addDiceEvents = (dice) => {
+      dice.body.addEventListener('sleep', (event) => {
+        dice.body.allowSleep = false;
+
+        const euler = new CANNON.Vec3();
+        event.target.quaternion.toEuler(euler);
+
+        const result = getDiceResult(euler);
+        if (result === null) {
+          dice.body.allowSleep = true;
+          return;
+        }
+
+        showRollResults(result);
       });
-    }
-  };
+    };
 
-  const options = [
-    { id: 'low', label: '🔽 LOW (2-7)', color: 'blue' },
-    { id: 'high', label: '🔼 HIGH (8-12)', color: 'red' },
-    { id: 'lucky7', label: '7️⃣ LUCKY 7', color: 'gold', special: true },
-    { id: 'snake', label: '🐍 SNAKE EYES', color: 'purple', special: true },
-    { id: 'boxcars', label: '🚗 BOXCARS', color: 'purple', special: true },
-  ];
+    const loader = new GLTFLoader();
+    let diceShape = new CANNON.Box(new CANNON.Vec3(0.5, 0.5, 0.5));
+
+    loader.load('/dice.glb', (gltf) => {
+      if (!wrapperRef.current) return;
+
+      const template = gltf.scene;
+      template.scale.setScalar(DICE_PARAMS.scale);
+      template.traverse((child) => {
+        if (child.isMesh) {
+          child.castShadow = true;
+          child.receiveShadow = true;
+        }
+      });
+
+      const bounds = new THREE.Box3().setFromObject(template);
+      const size = new THREE.Vector3();
+      bounds.getSize(size);
+      if (size.length() > 0) {
+        diceShape = new CANNON.Box(new CANNON.Vec3(size.x / 2, size.y / 2, size.z / 2));
+      }
+
+      for (let i = 0; i < DICE_PARAMS.numberOfDice; i += 1) {
+        const mesh = template.clone(true);
+        scene.add(mesh);
+
+        const body = new CANNON.Body({
+          mass: 1,
+          shape: diceShape,
+          sleepTimeLimit: 0.1,
+        });
+        world.addBody(body);
+
+        const dice = { mesh, body };
+        diceRef.current.push(dice);
+        addDiceEvents(dice);
+      }
+
+      throwRef.current();
+    });
+
+    const updateSceneSize = () => {
+      const width = wrapperRef.current.clientWidth || 1;
+      const height = wrapperRef.current.clientHeight || 1;
+      camera.aspect = width / height;
+      camera.updateProjectionMatrix();
+      renderer.setSize(width, height);
+    };
+
+    const resizeObserver = new ResizeObserver(updateSceneSize);
+    resizeObserver.observe(wrapperRef.current);
+    updateSceneSize();
+
+    const throwDice = () => {
+      scoreRef.current = [];
+      setScore('');
+
+      diceRef.current.forEach((dice, idx) => {
+        dice.body.velocity.setZero();
+        dice.body.angularVelocity.setZero();
+
+        dice.body.position.set(6, idx * 1.5, 0);
+        dice.mesh.position.copy(dice.body.position);
+
+        dice.mesh.rotation.set(2 * Math.PI * Math.random(), 0, 2 * Math.PI * Math.random());
+        dice.body.quaternion.copy(dice.mesh.quaternion);
+
+        const force = 3 + 5 * Math.random();
+        dice.body.applyImpulse(
+          new CANNON.Vec3(-force, force, 0),
+          new CANNON.Vec3(0, 0, 0.2)
+        );
+
+        dice.body.allowSleep = true;
+      });
+    };
+
+    throwRef.current = throwDice;
+
+    const render = () => {
+      world.fixedStep();
+      diceRef.current.forEach((dice) => {
+        dice.mesh.position.copy(dice.body.position);
+        dice.mesh.quaternion.copy(dice.body.quaternion);
+      });
+      renderer.render(scene, camera);
+      rafRef.current = requestAnimationFrame(render);
+    };
+
+    render();
+
+    const handleDoubleClick = () => throwDice();
+    const canvas = canvasRef.current;
+    canvas.addEventListener('dblclick', handleDoubleClick);
+
+    return () => {
+      canvas.removeEventListener('dblclick', handleDoubleClick);
+      resizeObserver.disconnect();
+      if (rafRef.current) cancelAnimationFrame(rafRef.current);
+      renderer.dispose();
+      diceRef.current = [];
+    };
+  }, []);
 
   return (
-    <div className="glass border border-white/10 rounded-2xl p-8 max-w-md mx-auto">
-      <h3 className="font-orbitron text-2xl font-bold gradient-text-gold mb-6 text-center">🎲 DICE ROLL</h3>
-      
-      <div className="grid grid-cols-2 gap-3 mb-6">
-        {options.map(opt => (
-          <button
-            key={opt.id}
-            onClick={() => setPredictions(p => ({ ...p, [opt.id]: !p[opt.id] }))}
-            disabled={rolling}
-            className={`py-3 px-2 rounded-lg font-rajdhani font-bold text-sm transition-all ${
-              predictions[opt.id]
-                ? opt.special ? 'bg-yellow-600 text-white border-2 border-yellow-400' : 'bg-white/15 text-white border-2 border-white/40'
-                : 'bg-white/05 text-gray-400 border border-white/10 hover:border-white/20'
-            } ${rolling ? 'opacity-50 cursor-not-allowed' : ''}`}
-          >
-            {opt.label}
-          </button>
-        ))}
+    <div style={{ display: 'grid', gap: '16px', width: '100%' }}>
+      <div style={{
+        display: 'flex',
+        flexWrap: 'wrap',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        gap: '12px',
+      }}>
+        <div>
+          <div className="font-rajdhani" style={{
+            fontSize: '10px',
+            textTransform: 'uppercase',
+            letterSpacing: '0.35em',
+            color: '#9ca3af',
+            marginBottom: '6px',
+          }}>
+            Score
+          </div>
+          <div className="font-orbitron font-black" style={{
+            fontSize: 'clamp(18px, 2vw, 24px)',
+            color: '#fde047',
+          }}>
+            {score || '—'}
+          </div>
+        </div>
+        <button
+          type="button"
+          className="font-rajdhani font-bold"
+          onClick={() => throwRef.current()}
+          style={{
+            borderRadius: '999px',
+            padding: '12px 24px',
+            background: 'linear-gradient(to right, #eab308, #f97316)',
+            color: '#000',
+            border: 'none',
+            cursor: 'pointer',
+            letterSpacing: '0.2em',
+            textTransform: 'uppercase',
+            boxShadow: '0 20px 60px rgba(245,197,24,0.2)',
+          }}
+        >
+          Throw Dice
+        </button>
       </div>
 
-      {result && (
-        <div className={`mb-6 p-4 rounded-lg text-center font-rajdhani font-bold ${
-          result.isWin ? 'bg-green-500/20 border border-green-500/40 text-green-400' : 'bg-red-500/20 border border-red-500/40 text-red-400'
-        }`}>
-          <div className="text-3xl mb-2">{result.dice1} 🎲 {result.dice2}</div>
-          <div>{result.isWin ? '✅ WIN!' : '❌ LOSS'} — Total: {result.total}</div>
-        </div>
-      )}
-
-      <button
-        onClick={handleRoll}
-        disabled={!Object.values(predictions).some(v => v) || rolling}
-        className="w-full py-3 rounded-xl font-orbitron font-bold text-black transition-all"
+      <div
+        ref={wrapperRef}
         style={{
-          background: Object.values(predictions).some(v => v) && !rolling ? 'linear-gradient(135deg, #ec4899, #db2777)' : '#6b7280',
-          cursor: (!Object.values(predictions).some(v => v) || rolling) ? 'not-allowed' : 'pointer'
+          width: '100%',
+          height: '320px',
+          borderRadius: '20px',
+          overflow: 'hidden',
+          background: 'rgba(0,0,0,0.12)',
         }}
       >
-        {rolling ? '🎲 ROLLING...' : '🎲 ROLL'}
-      </button>
+        <canvas ref={canvasRef} style={{ width: '100%', height: '100%', display: 'block' }} />
+      </div>
+
+      <div className="font-rajdhani" style={{ color: '#9ca3af', fontSize: '12px' }}>
+        Double click the dice area to throw again.
+      </div>
     </div>
   );
 }

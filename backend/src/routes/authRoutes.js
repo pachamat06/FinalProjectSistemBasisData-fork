@@ -5,11 +5,11 @@ const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 const router = express.Router();
 
+// ✅ JWT_SECRET warning (kita)
 const JWT_SECRET = process.env.JWT_SECRET || 'changeme_set_JWT_SECRET_in_env';
 if (!process.env.JWT_SECRET) {
   console.warn('[Auth] ⚠️  JWT_SECRET tidak diset di .env');
 }
-
 const signToken = (userId, expiresIn = '7d') =>
   jwt.sign({ userId }, JWT_SECRET, { expiresIn });
 
@@ -48,6 +48,7 @@ router.post('/login', async (req, res) => {
     });
     if (!user) return res.status(400).json({ error: 'Kredensial tidak valid' });
 
+    // ✅ Cek banned (kita)
     if (user.isBanned)
       return res.status(403).json({ error: 'Akun ini telah di-ban. Hubungi administrator.' });
 
@@ -60,7 +61,7 @@ router.post('/login', async (req, res) => {
     const player = await prisma.player.findUnique({ where: { userId: user.id } });
     res.json({
       token: signToken(user.id),
-      user: { id: user.id, username: user.username, email: user.email },
+      user:  { id: user.id, username: user.username, email: user.email },
       player,
     });
   } catch (err) {
@@ -70,33 +71,54 @@ router.post('/login', async (req, res) => {
 });
 
 // ── Guest Login ───────────────────────────────────────────────────────────────
-// token expired 1 hari
+// ✅ Retry logic (teman) + saldo 5000 (kita)
 router.post('/guest', async (req, res) => {
-  try {
-    const guestUsername = `Guest${Date.now().toString().slice(-6)}`;
-    const user = await prisma.user.create({
-      data: {
-        username:     guestUsername,
-        email:        `${guestUsername}@guest.com`,
-        passwordHash: '',
-        guestAccount: true,
-      },
-    });
-    // Saldo guest dibatasi 5000
-    const player = await prisma.player.create({
-      data: { userId: user.id, username: user.username, balance: 5000 },
-    });
+  const MAX_GUEST_ATTEMPTS = 5;
+  let user   = null;
+  let player = null;
 
-    const token = signToken(user.id, '1d');
-    res.json({
-      token,
-      user:   { id: user.id, username: user.username, email: user.email, guestAccount: true },
-      player,
-    });
-  } catch (err) {
-    console.error('[Auth] guest:', err.message);
-    res.status(500).json({ error: 'Guest login gagal' });
+  for (let attempt = 0; attempt < MAX_GUEST_ATTEMPTS; attempt++) {
+    const guestSuffix   = `${Date.now().toString(36)}${Math.floor(Math.random() * 1000).toString(36)}`;
+    const guestUsername = `Guest${guestSuffix}`;
+
+    try {
+      const result = await prisma.$transaction(async (tx) => {
+        const createdUser = await tx.user.create({
+          data: {
+            username:     guestUsername,
+            email:        `${guestUsername}@guest.com`,
+            passwordHash: '',
+            guestAccount: true,
+          },
+        });
+        const createdPlayer = await tx.player.create({
+          data: {
+            userId:   createdUser.id,
+            username: createdUser.username,
+            balance:  5000,             // ✅ saldo guest dibatasi 5000 (kita)
+          },
+        });
+        return { user: createdUser, player: createdPlayer };
+      });
+
+      user   = result.user;
+      player = result.player;
+      break;
+    } catch (error) {
+      if (error.code === 'P2002' && attempt < MAX_GUEST_ATTEMPTS - 1) continue;
+      throw error;
+    }
   }
+
+  if (!user || !player)
+    return res.status(500).json({ error: 'Guest login gagal' });
+
+  const token = signToken(user.id, '1d');
+  res.json({
+    token,
+    user:   { id: user.id, username: user.username, email: user.email, guestAccount: true },
+    player,
+  });
 });
 
 // ── Middleware auth ───────────────────────────────────────────────────────────
@@ -120,6 +142,8 @@ router.get('/me', authenticate, async (req, res) => {
       include: { player: true },
     });
     if (!user) return res.status(404).json({ error: 'User tidak ditemukan' });
+
+    // ✅ Tolak token aktif jika sudah di-ban (kita)
     if (user.isBanned)
       return res.status(403).json({ error: 'Akun ini telah di-ban.' });
 
@@ -130,7 +154,7 @@ router.get('/me', authenticate, async (req, res) => {
   }
 });
 
-// ── DELETE /me — hapus akun sendiri (termasuk auto-delete saat guest logout) ──
+// ── DELETE /me — hapus akun sendiri / auto-delete guest saat logout ───────────
 router.delete('/me', authenticate, async (req, res) => {
   try {
     const user = await prisma.user.findUnique({
