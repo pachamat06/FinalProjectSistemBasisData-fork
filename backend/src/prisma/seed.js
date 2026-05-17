@@ -1,4 +1,5 @@
 const { PrismaClient } = require('@prisma/client');
+const bcrypt = require('bcryptjs');
 const prisma = new PrismaClient();
 
 const USERNAMES = [
@@ -24,8 +25,11 @@ async function seed() {
   await prisma.gameSession.deleteMany();
   await prisma.rTPProfile.deleteMany();
   await prisma.player.deleteMany();
+  await prisma.user.deleteMany();
 
   const players = [];
+
+  const seedPasswordHash = await bcrypt.hash('password', 10);
 
   for (let i = 0; i < 20; i++) {
     const wins = randInt(50, 500);
@@ -35,17 +39,34 @@ async function seed() {
     const totalProfit = totalWon - totalBet;
     const balance = Math.max(500, 10000 + totalProfit * rand(0.1, 0.3));
 
-    const player = await prisma.player.create({
-      data: {
-        username: USERNAMES[i],
-        balance: parseFloat(balance.toFixed(2)),
-        level: randInt(1, 50),
-        totalWins: wins,
-        totalLosses: losses,
-        totalProfit: parseFloat(totalProfit.toFixed(2)),
-        totalBetAmount: parseFloat(totalBet.toFixed(2)),
-        highestSingleWin: parseFloat((rand(500, 10000)).toFixed(2)),
-      },
+    const baseUsername = USERNAMES[i];
+    const email = `${baseUsername.toLowerCase()}@seed.local`;
+
+    const { player } = await prisma.$transaction(async (tx) => {
+      const user = await tx.user.create({
+        data: {
+          username: baseUsername,
+          email,
+          passwordHash: seedPasswordHash,
+          guestAccount: false,
+        },
+      });
+
+      const createdPlayer = await tx.player.create({
+        data: {
+          userId: user.id,
+          username: user.username,
+          balance: parseFloat(balance.toFixed(2)),
+          level: randInt(1, 50),
+          totalWins: wins,
+          totalLosses: losses,
+          totalProfit: parseFloat(totalProfit.toFixed(2)),
+          totalBetAmount: parseFloat(totalBet.toFixed(2)),
+          highestSingleWin: parseFloat((rand(500, 10000)).toFixed(2)),
+        },
+      });
+
+      return { player: createdPlayer };
     });
 
     // Create RTP profile

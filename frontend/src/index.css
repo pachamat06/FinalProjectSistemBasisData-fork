@@ -82,7 +82,7 @@ body {
 }
 
 .text-glow-gold {
-  text-shadow: 0 0 20px rgba(245, 197, 24, 0.8), 0 0 40px rgba(245, 197, 24, 0.4);
+  text-shadow: 0 0 14px rgba(245, 197, 24, 0.45), 0 0 28px rgba(245, 197, 24, 0.2);
 }
 
 .text-glow-cyan {
@@ -147,6 +147,12 @@ body {
   100% { transform: scale(1); opacity: 1; }
 }
 
+@keyframes gradient-shift {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
 .animate-float { animation: float 3s ease-in-out infinite; }
 .animate-pulse-gold { animation: pulse-gold 2s ease-in-out infinite; }
 .animate-shimmer { animation: shimmer 3s linear infinite; }
@@ -156,6 +162,10 @@ body {
 .animate-scale-in { animation: scale-in 0.3s ease-out; }
 .animate-rotate-slow { animation: rotate-slow 8s linear infinite; }
 .animate-bounce-in { animation: bounce-in 0.5s cubic-bezier(0.36, 0.07, 0.19, 0.97); }
+.animate-gradient-shift {
+  background-size: 200% 200%;
+  animation: gradient-shift 12s ease-in-out infinite;
+}
 
 /* Gradient text */
 .gradient-text-gold {

@@ -5,7 +5,6 @@ import { useState, useEffect } from 'react';
 const NAV_LINKS = [
   { path: '/',            label: 'Home'        },
   { path: '/casino',      label: 'Casino'      },
-  { path: '/games',       label: 'Games'       },
   { path: '/leaderboard', label: 'Leaderboard' },
   { path: '/analytics',   label: 'Analytics'   },
   { path: '/admin',       label: 'Admin'       },
@@ -15,7 +14,7 @@ export default function Navbar() {
   const location  = useLocation();
   const navigate  = useNavigate();
   const { currentPlayer }  = usePlayerStore();
-  const { user, logout }   = useAuthStore();
+  const { user, logout, isAuthenticated }   = useAuthStore();
   const [showPlayerSelect, setShowPlayerSelect] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 900);
@@ -28,7 +27,7 @@ export default function Navbar() {
 
   const handleLogout = () => {
     logout();
-    navigate('/login');
+    navigate('/');
     setMenuOpen(false);
   };
 
@@ -111,8 +110,63 @@ export default function Navbar() {
         {/* Right side */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexShrink: 0 }}>
 
+          {!isMobile && !isAuthenticated && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <Link
+                to="/login"
+                className="font-rajdhani"
+                style={{
+                  padding: '7px 14px', borderRadius: '8px', fontSize: '13px',
+                  color: '#facc15', textDecoration: 'none',
+                  border: '1px solid rgba(234,179,8,0.3)',
+                  background: 'rgba(234,179,8,0.08)',
+                  transition: 'background 0.5s, color 0.5s, border-color 0.5s, box-shadow 0.5s',
+                }}
+                onMouseOver={(e) => {
+                  e.currentTarget.style.background = 'linear-gradient(to right, #eab308, #f97316)';
+                  e.currentTarget.style.color = '#000';
+                  e.currentTarget.style.borderColor = 'transparent';
+                  e.currentTarget.style.boxShadow = '0 12px 36px rgba(245,197,24,0.25)';
+                }}
+                onMouseOut={(e) => {
+                  e.currentTarget.style.background = 'rgba(234,179,8,0.08)';
+                  e.currentTarget.style.color = '#facc15';
+                  e.currentTarget.style.borderColor = 'rgba(234,179,8,0.3)';
+                  e.currentTarget.style.boxShadow = 'none';
+                }}
+              >
+                Login
+              </Link>
+              <Link
+                to="/register"
+                className="font-rajdhani"
+                style={{
+                  padding: '7px 14px', borderRadius: '8px', fontSize: '13px',
+                  color: '#fff', textDecoration: 'none',
+                  border: '1px solid rgba(255,255,255,0.2)',
+                  background: 'rgba(255,255,255,0.06)',
+                  transition: 'background 0.5s, color 0.5s, border-color 0.5s, box-shadow 0.5s',
+                }}
+                onMouseOver={(e) => {
+                  e.currentTarget.style.background = 'linear-gradient(to right, #eab308, #f97316)';
+                  e.currentTarget.style.color = '#000';
+                  e.currentTarget.style.borderColor = 'transparent';
+                  e.currentTarget.style.boxShadow = '0 12px 36px rgba(245,197,24,0.25)';
+                }}
+                onMouseOut={(e) => {
+                  e.currentTarget.style.background = 'rgba(255,255,255,0.06)';
+                  e.currentTarget.style.color = '#fff';
+                  e.currentTarget.style.borderColor = 'rgba(255,255,255,0.2)';
+                  e.currentTarget.style.boxShadow = 'none';
+                }}
+              >
+                Register
+              </Link>
+            </div>
+          )}
+
           {/* Player button — desktop only */}
-          {!isMobile && (
+          {!isMobile && isAuthenticated && (
             <div style={{ position: 'relative' }}>
               <button
                 onClick={() => setShowPlayerSelect(!showPlayerSelect)}
@@ -222,33 +276,90 @@ export default function Navbar() {
             ))}
           </div>
 
-          <div style={{
-            border: '1px solid rgba(234,179,8,0.2)', borderRadius: '10px',
-            padding: '14px 16px', background: 'rgba(234,179,8,0.05)',
-            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          }}>
-            <div>
-              <div className="font-rajdhani font-semibold" style={{ color: '#fde047', fontSize: '14px' }}>
-                {user ? user.username : 'User'}
-              </div>
-              {currentPlayer && (
-                <div className="font-rajdhani" style={{ color: '#86efac', fontSize: '12px', marginTop: '2px' }}>
-                  {currentPlayer.balance?.toLocaleString()} 🪙
+          {isAuthenticated ? (
+            <div style={{
+              border: '1px solid rgba(234,179,8,0.2)', borderRadius: '10px',
+              padding: '14px 16px', background: 'rgba(234,179,8,0.05)',
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            }}>
+              <div>
+                <div className="font-rajdhani font-semibold" style={{ color: '#fde047', fontSize: '14px' }}>
+                  {user ? user.username : 'User'}
                 </div>
-              )}
+                {currentPlayer && (
+                  <div className="font-rajdhani" style={{ color: '#86efac', fontSize: '12px', marginTop: '2px' }}>
+                    {currentPlayer.balance?.toLocaleString()} 🪙
+                  </div>
+                )}
+              </div>
+              <button
+                onClick={handleLogout}
+                className="font-rajdhani"
+                style={{
+                  padding: '8px 16px', borderRadius: '6px', fontSize: '13px',
+                  color: '#f87171', background: 'rgba(239,68,68,0.1)',
+                  border: '1px solid rgba(239,68,68,0.2)', cursor: 'pointer',
+                }}
+              >
+                Logout
+              </button>
             </div>
-            <button
-              onClick={handleLogout}
-              className="font-rajdhani"
-              style={{
-                padding: '8px 16px', borderRadius: '6px', fontSize: '13px',
-                color: '#f87171', background: 'rgba(239,68,68,0.1)',
-                border: '1px solid rgba(239,68,68,0.2)', cursor: 'pointer',
-              }}
-            >
-              Logout
-            </button>
-          </div>
+          ) : (
+            <div style={{ display: 'flex', gap: '10px' }}>
+              <Link
+                to="/login"
+                className="font-rajdhani"
+                onClick={() => setMenuOpen(false)}
+                style={{
+                  padding: '10px 16px', borderRadius: '8px', fontSize: '14px',
+                  color: '#facc15', textDecoration: 'none',
+                  border: '1px solid rgba(234,179,8,0.3)',
+                  background: 'rgba(234,179,8,0.08)',
+                  transition: 'background 0.5s, color 0.5s, border-color 0.5s, box-shadow 0.5s',
+                }}
+                onMouseOver={(e) => {
+                  e.currentTarget.style.background = 'linear-gradient(to right, #eab308, #f97316)';
+                  e.currentTarget.style.color = '#000';
+                  e.currentTarget.style.borderColor = 'transparent';
+                  e.currentTarget.style.boxShadow = '0 12px 36px rgba(245,197,24,0.25)';
+                }}
+                onMouseOut={(e) => {
+                  e.currentTarget.style.background = 'rgba(234,179,8,0.08)';
+                  e.currentTarget.style.color = '#facc15';
+                  e.currentTarget.style.borderColor = 'rgba(234,179,8,0.3)';
+                  e.currentTarget.style.boxShadow = 'none';
+                }}
+              >
+                Login
+              </Link>
+              <Link
+                to="/register"
+                className="font-rajdhani"
+                onClick={() => setMenuOpen(false)}
+                style={{
+                  padding: '10px 16px', borderRadius: '8px', fontSize: '14px',
+                  color: '#fff', textDecoration: 'none',
+                  border: '1px solid rgba(255,255,255,0.2)',
+                  background: 'rgba(255,255,255,0.06)',
+                  transition: 'background 0.5s, color 0.5s, border-color 0.5s, box-shadow 0.5s',
+                }}
+                onMouseOver={(e) => {
+                  e.currentTarget.style.background = 'linear-gradient(to right, #eab308, #f97316)';
+                  e.currentTarget.style.color = '#000';
+                  e.currentTarget.style.borderColor = 'transparent';
+                  e.currentTarget.style.boxShadow = '0 12px 36px rgba(245,197,24,0.25)';
+                }}
+                onMouseOut={(e) => {
+                  e.currentTarget.style.background = 'rgba(255,255,255,0.06)';
+                  e.currentTarget.style.color = '#fff';
+                  e.currentTarget.style.borderColor = 'rgba(255,255,255,0.2)';
+                  e.currentTarget.style.boxShadow = 'none';
+                }}
+              >
+                Register
+              </Link>
+            </div>
+          )}
         </div>
       )}
     </nav>
