@@ -1,10 +1,11 @@
 const prisma = require('../config/prisma');
-const { processSpin }   = require('../services/gameService');
+const { processSpin } = require('../services/gameService');
 const {
+  getSystemStats,
   getPlayerSession, setPlayerSession,
   invalidateRTPCache, deletePlayerSession,
-  getOnlineCount,
 } = require('../services/redisService');
+const { getRedis } = require('../config/redis');
 
 const simulateSpins = async (req, res) => {
   try {
@@ -37,6 +38,13 @@ const simulateSpins = async (req, res) => {
 
 const getSystemStatsAdmin = async (req, res) => {
   try {
+    // Redis stats — fallback jika Redis tidak tersedia
+    let redisStats = { onlineCount: 0, redisKeys: 0, redisStatus: 'offline' };
+    try {
+      const stats = await getSystemStats();
+      redisStats  = { ...stats, redisStatus: 'online' };
+    } catch { /* Redis tidak jalan */ }
+
     const [playerCount, roundCount, sessionCount, bannedCount] = await Promise.all([
       prisma.player.count(),
       prisma.gameRound.count(),
@@ -45,12 +53,11 @@ const getSystemStatsAdmin = async (req, res) => {
     ]);
 
     res.json({
+      ...redisStats,
       playerCount,
       totalRounds:   roundCount,
       totalSessions: sessionCount,
       bannedUsers:   bannedCount,
-      onlineCount:   await getOnlineCount(),
-      redisStatus:   'disabled',
     });
   } catch (err) { res.status(500).json({ error: err.message }); }
 };
@@ -79,9 +86,22 @@ const forceLoseStreak = async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 };
 
-// Redis tidak digunakan — kembalikan pesan informatif
 const inspectRedis = async (req, res) => {
-  res.json({ _status: 'Redis tidak digunakan pada deployment ini.' });
+  try {
+    const redis = getRedis();
+    const keys  = await redis.keys('*');
+    const data  = {};
+    for (const key of keys.slice(0, 50)) {
+      const type = await redis.type(key);
+      if      (type === 'string') data[key] = await redis.get(key);
+      else if (type === 'zset')   data[key] = await redis.zrevrange(key, 0, 4, 'WITHSCORES');
+      else if (type === 'list')   data[key] = await redis.lrange(key, 0, 4);
+      else if (type === 'set')    data[key] = await redis.smembers(key);
+    }
+    res.json(data);
+  } catch (err) {
+    res.json({ _status: 'Redis tidak tersedia', error: err.message });
+  }
 };
 
 // ── Ban / Unban ───────────────────────────────────────────────────────────────
@@ -92,14 +112,10 @@ const banUser = async (req, res) => {
     if (!user)         return res.status(404).json({ error: 'User tidak ditemukan' });
     if (user.isBanned) return res.status(400).json({ error: 'User sudah di-ban' });
 
-    await prisma.user.update({
-      where: { id: userId },
-      data:  { isBanned: true, bannedAt: new Date() },
-    });
+    await prisma.user.update({ where: { id: userId }, data: { isBanned: true, bannedAt: new Date() } });
 
-    // Hapus session in-memory
     const player = await prisma.player.findUnique({ where: { userId } });
-    if (player) await deletePlayerSession(player.id);
+    if (player) await deletePlayerSession(player.id).catch(() => {});
 
     res.json({ success: true, message: `User ${user.username} berhasil di-ban` });
   } catch (err) { res.status(500).json({ error: err.message }); }
@@ -141,8 +157,15 @@ async function _deleteUserCascade(user) {
     await tx.user.delete({ where: { id: user.id } });
   });
 
-  // Bersihkan session in-memory
-  if (player) await deletePlayerSession(player.id);
+  if (player) {
+    await Promise.all([
+      deletePlayerSession(player.id).catch(() => {}),
+      invalidateRTPCache(player.id).catch(() => {}),
+      getRedis().zrem('leaderboard:profit',    player.id).catch(() => {}),
+      getRedis().zrem('leaderboard:highestWin',player.id).catch(() => {}),
+      getRedis().zrem('leaderboard:mostActive',player.id).catch(() => {}),
+    ]);
+  }
 }
 
 module.exports = {
