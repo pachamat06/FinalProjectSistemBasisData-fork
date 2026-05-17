@@ -12,18 +12,21 @@ const NAV_LINKS = [
 ];
 
 export default function Navbar() {
-  const location  = useLocation();
-  const navigate  = useNavigate();
-  const { currentPlayer }  = usePlayerStore();
-  const { user, logout }   = useAuthStore();
+  const location = useLocation();
+  const navigate = useNavigate();
+  const { currentPlayer } = usePlayerStore();
+  const { user, logout }  = useAuthStore();
+
   const [showPlayerSelect, setShowPlayerSelect] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
-  const [isMobile, setIsMobile] = useState(window.innerWidth < 900);
+
+  const [isMobile, setIsMobile] = useState(false);
 
   useEffect(() => {
-    const handleResize = () => setIsMobile(window.innerWidth < 900);
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
+    const check = () => setIsMobile(window.innerWidth < 900);
+    check(); // set nilai awal setelah mount
+    window.addEventListener('resize', check);
+    return () => window.removeEventListener('resize', check);
   }, []);
 
   const handleLogout = () => {
@@ -34,21 +37,21 @@ export default function Navbar() {
 
   return (
     <nav style={{
-      position: 'sticky',
-      top: 0,
-      zIndex: 50,
+      position:     'sticky',
+      top:          0,
+      zIndex:       50,
       borderBottom: '1px solid rgba(234,179,8,0.1)',
       backdropFilter: 'blur(24px)',
-      boxShadow: '0 4px 32px rgba(0,0,0,0.4)',
+      boxShadow:    '0 4px 32px rgba(0,0,0,0.4)',
     }} className="glass bg-slate-950/80">
       <div style={{
-        maxWidth: '1280px',
-        margin: '0 auto',
-        padding: '0 clamp(16px, 3vw, 40px)',
-        display: 'flex',
-        alignItems: 'center',
+        maxWidth:       '1280px',
+        margin:         '0 auto',
+        padding:        '0 clamp(16px, 3vw, 40px)',
+        display:        'flex',
+        alignItems:     'center',
         justifyContent: 'space-between',
-        height: '64px',
+        height:         '64px',
       }}>
 
         {/* Logo */}
@@ -66,7 +69,7 @@ export default function Navbar() {
           </span>
         </Link>
 
-        {/* Desktop nav links — only when NOT mobile */}
+        {/* Desktop nav */}
         {!isMobile && (
           <div style={{ display: 'flex', alignItems: 'center', gap: '2px' }}>
             {NAV_LINKS.map((link) => (
@@ -75,29 +78,23 @@ export default function Navbar() {
                 to={link.path}
                 className="font-rajdhani"
                 style={{
-                  padding: '7px 13px',
-                  borderRadius: '8px',
-                  fontSize: '13px',
-                  fontWeight: 500,
-                  display: 'flex',
-                  alignItems: 'center',
-                  textDecoration: 'none',
-                  transition: 'all 0.2s',
-                  letterSpacing: '0.05em',
-                  whiteSpace: 'nowrap',
+                  padding: '7px 13px', borderRadius: '8px', fontSize: '13px',
+                  fontWeight: 500, display: 'flex', alignItems: 'center',
+                  textDecoration: 'none', transition: 'all 0.2s',
+                  letterSpacing: '0.05em', whiteSpace: 'nowrap',
                   ...(location.pathname === link.path
                     ? { background: 'rgba(234,179,8,0.15)', color: '#facc15', border: '1px solid rgba(234,179,8,0.3)' }
                     : { color: '#9ca3af', border: '1px solid transparent' }),
                 }}
                 onMouseOver={e => {
                   if (location.pathname !== link.path) {
-                    e.currentTarget.style.color = '#facc15';
+                    e.currentTarget.style.color      = '#facc15';
                     e.currentTarget.style.background = 'rgba(234,179,8,0.08)';
                   }
                 }}
                 onMouseOut={e => {
                   if (location.pathname !== link.path) {
-                    e.currentTarget.style.color = '#9ca3af';
+                    e.currentTarget.style.color      = '#9ca3af';
                     e.currentTarget.style.background = 'transparent';
                   }
                 }}
@@ -111,7 +108,7 @@ export default function Navbar() {
         {/* Right side */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexShrink: 0 }}>
 
-          {/* Player button — desktop only */}
+          {/* User button — desktop */}
           {!isMobile && (
             <div style={{ position: 'relative' }}>
               <button
@@ -163,7 +160,7 @@ export default function Navbar() {
             </div>
           )}
 
-          {/* Hamburger — mobile only */}
+          {/* Hamburger — mobile */}
           {isMobile && (
             <button
               onClick={() => setMenuOpen(!menuOpen)}
@@ -191,16 +188,12 @@ export default function Navbar() {
               }} />
             </button>
           )}
-
         </div>
       </div>
 
-      {/* Mobile dropdown menu */}
+      {/* Mobile dropdown */}
       {isMobile && menuOpen && (
-        <div style={{
-          borderTop: '1px solid rgba(234,179,8,0.1)',
-          padding: '12px 16px 20px',
-        }}>
+        <div style={{ borderTop: '1px solid rgba(234,179,8,0.1)', padding: '12px 16px 20px' }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginBottom: '16px' }}>
             {NAV_LINKS.map((link) => (
               <Link

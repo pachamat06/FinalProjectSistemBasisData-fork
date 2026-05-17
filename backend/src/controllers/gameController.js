@@ -19,10 +19,7 @@ const startSession = async (req, res) => {
       }).catch(() => {});
     }
 
-    const session = await prisma.gameSession.create({
-      data: { playerId },
-    });
-
+    const session = await prisma.gameSession.create({ data: { playerId } });
     await setPlayerSession(playerId, { sessionId: session.id, startedAt: Date.now() });
     res.json({ session });
   } catch (err) {
@@ -33,14 +30,20 @@ const startSession = async (req, res) => {
 const endSession = async (req, res) => {
   try {
     const { playerId, sessionId } = req.body;
+    if (!playerId || !sessionId) return res.status(400).json({ error: 'playerId and sessionId required' });
+
+    // Ambil data session dulu untuk hitung averageBet
+    const existing = await prisma.gameSession.findUnique({ where: { id: sessionId } });
+
+    const averageBet = existing && existing.totalRounds > 0
+      ? parseFloat((existing.totalBet / existing.totalRounds).toFixed(2))
+      : 0;
 
     const session = await prisma.gameSession.update({
       where: { id: sessionId },
       data: {
         endedAt: new Date(),
-        averageBet: {
-          // will recompute properly
-        },
+        averageBet,
       },
     });
 

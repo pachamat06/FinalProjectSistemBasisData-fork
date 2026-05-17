@@ -1,26 +1,33 @@
 import { create } from 'zustand';
-import { fetchPlayer, fetchPlayers, spinGame, fetchPlayerStats, fetchPlayerHistory } from '../services/api';
+import { fetchPlayer, fetchPlayers, fetchPlayerHistory } from '../services/api';
 
+// AUTH STORE
 export const useAuthStore = create((set, get) => ({
-  user: null,
-  token: null,
+  user:            null,
+  token:           null,
   isAuthenticated: false,
-  loading: false,
-  error: null,
+  loading:         false,
+  error:           null,
 
   login: async (usernameOrEmail, password) => {
     set({ loading: true, error: null });
     try {
       const response = await fetch('/api/auth/login', {
-        method: 'POST',
+        method:  'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ usernameOrEmail, password }),
+        body:    JSON.stringify({ usernameOrEmail, password }),
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error);
 
       localStorage.setItem('token', data.token);
-      set({ user: data.user, token: data.token, isAuthenticated: true, loading: false });
+      //Simpan player di dalam user agar WelcomePage bisa akses user.player
+      set({ user: { ...data.user, player: data.player }, token: data.token, isAuthenticated: true, loading: false });
+
+      //Set currentPlayer langsung dari data auth
+      if (data.player) {
+        usePlayerStore.getState().loadPlayerFromAuth(data.player);
+      }
       return data;
     } catch (err) {
       set({ error: err.message, loading: false });
@@ -32,15 +39,19 @@ export const useAuthStore = create((set, get) => ({
     set({ loading: true, error: null });
     try {
       const response = await fetch('/api/auth/register', {
-        method: 'POST',
+        method:  'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, email, password }),
+        body:    JSON.stringify({ username, email, password }),
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error);
 
       localStorage.setItem('token', data.token);
-      set({ user: data.user, token: data.token, isAuthenticated: true, loading: false });
+      set({ user: { ...data.user, player: data.player }, token: data.token, isAuthenticated: true, loading: false });
+
+      if (data.player) {
+        usePlayerStore.getState().loadPlayerFromAuth(data.player);
+      }
       return data;
     } catch (err) {
       set({ error: err.message, loading: false });
@@ -52,14 +63,18 @@ export const useAuthStore = create((set, get) => ({
     set({ loading: true, error: null });
     try {
       const response = await fetch('/api/auth/guest', {
-        method: 'POST',
+        method:  'POST',
         headers: { 'Content-Type': 'application/json' },
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error);
 
       localStorage.setItem('token', data.token);
-      set({ user: data.user, token: data.token, isAuthenticated: true, loading: false });
+      set({ user: { ...data.user, player: data.player }, token: data.token, isAuthenticated: true, loading: false });
+
+      if (data.player) {
+        usePlayerStore.getState().loadPlayerFromAuth(data.player);
+      }
       return data;
     } catch (err) {
       set({ error: err.message, loading: false });
@@ -69,6 +84,8 @@ export const useAuthStore = create((set, get) => ({
 
   logout: () => {
     localStorage.removeItem('token');
+    // Reset player store juga saat logout
+    usePlayerStore.getState().clearPlayer();
     set({ user: null, token: null, isAuthenticated: false });
   },
 
@@ -83,6 +100,12 @@ export const useAuthStore = create((set, get) => ({
       const data = await response.json();
       if (response.ok) {
         set({ user: data.user, token, isAuthenticated: true });
+
+        // Set currentPlayer dari token restore
+        const player = data.player ?? data.user?.player;
+        if (player) {
+          usePlayerStore.getState().loadPlayerFromAuth(player);
+        }
         return data;
       } else {
         localStorage.removeItem('token');
@@ -93,19 +116,22 @@ export const useAuthStore = create((set, get) => ({
   },
 }));
 
+// PLAYER STORE
 export const usePlayerStore = create((set, get) => ({
   currentPlayer: null,
-  players: [],
-  loading: false,
-  error: null,
+  players:       [],
+  loading:       false,
+  error:         null,
 
   setCurrentPlayer: (player) => set({ currentPlayer: player }),
 
+  // oadPlayers tdk override currentPlayer jika sudah ada dari auth
   loadPlayers: async () => {
     set({ loading: true });
     try {
       const players = await fetchPlayers();
       set({ players, loading: false });
+      // Hanya set currentPlayer jika belum ada (belum login / belum set dari auth)
       if (!get().currentPlayer && players.length > 0) {
         set({ currentPlayer: players[0] });
       }
@@ -114,8 +140,14 @@ export const usePlayerStore = create((set, get) => ({
     }
   },
 
+  // Dipanggil oleh authStore setelah login/register/checkAuth
   loadPlayerFromAuth: (player) => {
     set({ currentPlayer: player });
+  },
+
+  // reset saat logout
+  clearPlayer: () => {
+    set({ currentPlayer: null });
   },
 
   refreshPlayer: async (id) => {
@@ -139,11 +171,12 @@ export const usePlayerStore = create((set, get) => ({
   },
 }));
 
-export const useGameStore = create((set, get) => ({
-  isSpinning: false,
-  lastResult: null,
-  history: [],
-  spinCount: 0,
+// GAME STORE
+export const useGameStore = create((set) => ({
+  isSpinning:  false,
+  lastResult:  null,
+  history:     [],
+  spinCount:   0,
   notification: null,
 
   setSpinning: (v) => set({ isSpinning: v }),
@@ -151,8 +184,8 @@ export const useGameStore = create((set, get) => ({
   addResult: (result) => {
     set((state) => ({
       lastResult: result,
-      history: [result, ...state.history].slice(0, 100),
-      spinCount: state.spinCount + 1,
+      history:    [result, ...state.history].slice(0, 100),
+      spinCount:  state.spinCount + 1,
     }));
   },
 
@@ -171,28 +204,30 @@ export const useGameStore = create((set, get) => ({
   },
 }));
 
+// LEADERBOARD STORE
 export const useLeaderboardStore = create((set) => ({
   leaderboard: [],
-  recentWins: [],
-  hotStreaks: [],
-  metric: 'profit',
+  recentWins:  [],
+  hotStreaks:  [],
+  metric:      'profit',
 
-  setLeaderboard: (data) => set({ leaderboard: data }),
-  setRecentWins: (data) => set({ recentWins: data }),
-  setHotStreaks: (data) => set({ hotStreaks: data }),
-  setMetric: (metric) => set({ metric }),
+  setLeaderboard: (data)   => set({ leaderboard: data }),
+  setRecentWins:  (data)   => set({ recentWins: data }),
+  setHotStreaks:  (data)   => set({ hotStreaks: data }),
+  setMetric:      (metric) => set({ metric }),
 
   updateFromSocket: (data) => {
     if (Array.isArray(data)) set({ leaderboard: data });
   },
 }));
 
+// SYSTEM STORE
 export const useSystemStore = create((set) => ({
   onlineCount: 0,
-  recentFeed: [],
+  recentFeed:  [],
 
   setOnlineCount: (count) => set({ onlineCount: count }),
-  addFeedItem: (item) => set((state) => ({
+  addFeedItem:    (item)  => set((state) => ({
     recentFeed: [item, ...state.recentFeed].slice(0, 30),
   })),
 }));

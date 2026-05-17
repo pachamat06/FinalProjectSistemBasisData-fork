@@ -1,146 +1,128 @@
-const express = require('express');
-const bcrypt = require('bcryptjs');
-const jwt = require('jsonwebtoken');
+const express  = require('express');
+const bcrypt   = require('bcryptjs');
+const jwt      = require('jsonwebtoken');
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
-
 const router = express.Router();
 
-// Register
+// Ambil secret sekali, log peringatan jika tidak diset
+const JWT_SECRET = process.env.JWT_SECRET || 'changeme_set_JWT_SECRET_in_env';
+if (!process.env.JWT_SECRET) {
+  console.warn('[Auth] ⚠️  JWT_SECRET tidak diset di .env — gunakan nilai aman di production!');
+}
+
+const signToken = (userId, expiresIn = '7d') =>
+  jwt.sign({ userId }, JWT_SECRET, { expiresIn });
+
+// ── Register ─────────────────────────────────────────────────────────────────
 router.post('/register', async (req, res) => {
   try {
     const { username, email, password } = req.body;
+    if (!username || !email || !password)
+      return res.status(400).json({ error: 'username, email, dan password wajib diisi' });
 
-    // Check if user exists
     const existingUser = await prisma.user.findFirst({
-      where: { OR: [{ username }, { email }] }
+      where: { OR: [{ username }, { email }] },
     });
-    if (existingUser) {
-      return res.status(400).json({ error: 'Username or email already exists' });
-    }
+    if (existingUser)
+      return res.status(400).json({ error: 'Username atau email sudah digunakan' });
 
-    // Hash password
     const passwordHash = await bcrypt.hash(password, 10);
-
-    // Create user
     const user = await prisma.user.create({
-      data: { username, email, passwordHash }
+      data: { username, email, passwordHash },
     });
-
-    // Create player profile
     const player = await prisma.player.create({
-      data: {
-        userId: user.id,
-        username: user.username,
-        balance: 10000
-      }
+      data: { userId: user.id, username: user.username, balance: 10000 },
     });
 
-    // Generate JWT
-    const token = jwt.sign({ userId: user.id }, process.env.JWT_SECRET || 'secret', { expiresIn: '7d' });
-
+    const token = signToken(user.id);
     res.json({ token, user: { id: user.id, username, email }, player });
   } catch (error) {
-    res.status(500).json({ error: 'Registration failed' });
+    console.error('[Auth] register error:', error.message);
+    res.status(500).json({ error: 'Registrasi gagal' });
   }
 });
 
-// Login
+// ── Login ─────────────────────────────────────────────────────────────────────
 router.post('/login', async (req, res) => {
   try {
     const { usernameOrEmail, password } = req.body;
+    if (!usernameOrEmail || !password)
+      return res.status(400).json({ error: 'usernameOrEmail dan password wajib diisi' });
 
-    // Find user
     const user = await prisma.user.findFirst({
-      where: {
-        OR: [
-          { username: usernameOrEmail },
-          { email: usernameOrEmail }
-        ]
-      }
+      where: { OR: [{ username: usernameOrEmail }, { email: usernameOrEmail }] },
     });
-    if (!user) {
-      return res.status(400).json({ error: 'Invalid credentials' });
-    }
+    if (!user) return res.status(400).json({ error: 'Kredensial tidak valid' });
 
-    // Check password
+    // Guest tidak bisa login dengan password
+    if (user.guestAccount)
+      return res.status(400).json({ error: 'Akun guest tidak bisa login dengan password' });
+
     const validPassword = await bcrypt.compare(password, user.passwordHash);
-    if (!validPassword) {
-      return res.status(400).json({ error: 'Invalid credentials' });
-    }
+    if (!validPassword) return res.status(400).json({ error: 'Kredensial tidak valid' });
 
-    // Get player
-    const player = await prisma.player.findUnique({
-      where: { userId: user.id }
-    });
-
-    // Generate JWT
-    const token = jwt.sign({ userId: user.id }, process.env.JWT_SECRET || 'secret', { expiresIn: '7d' });
+    const player = await prisma.player.findUnique({ where: { userId: user.id } });
+    const token  = signToken(user.id);
 
     res.json({ token, user: { id: user.id, username: user.username, email: user.email }, player });
   } catch (error) {
-    res.status(500).json({ error: 'Login failed' });
+    console.error('[Auth] login error:', error.message);
+    res.status(500).json({ error: 'Login gagal' });
   }
 });
 
-// Guest login
+// ── Guest Login ───────────────────────────────────────────────────────────────
 router.post('/guest', async (req, res) => {
   try {
-    // Generate guest username
-    const guestUsername = `Guest${Math.floor(Math.random() * 10000)}`;
+    // Pastikan username unik dengan timestamp
+    const guestUsername = `Guest${Date.now().toString().slice(-6)}`;
 
-    // Create guest user
     const user = await prisma.user.create({
       data: {
-        username: guestUsername,
-        email: `${guestUsername}@guest.com`,
-        passwordHash: '', // No password for guests
-        guestAccount: true
-      }
+        username:     guestUsername,
+        email:        `${guestUsername}@guest.com`,
+        passwordHash: '',
+        guestAccount: true,
+      },
     });
-
-    // Create player profile
     const player = await prisma.player.create({
-      data: {
-        userId: user.id,
-        username: user.username,
-        balance: 10000
-      }
+      data: { userId: user.id, username: user.username, balance: 10000 },
     });
 
-    // Generate JWT
-    const token = jwt.sign({ userId: user.id }, process.env.JWT_SECRET || 'secret', { expiresIn: '1d' });
-
+    const token = signToken(user.id, '1d');
     res.json({ token, user: { id: user.id, username: user.username, email: user.email }, player });
   } catch (error) {
-    res.status(500).json({ error: 'Guest login failed' });
+    console.error('[Auth] guest error:', error.message);
+    res.status(500).json({ error: 'Guest login gagal' });
   }
 });
 
-// Verify token middleware
+// ── Middleware: verify token ──────────────────────────────────────────────────
 const authenticate = (req, res, next) => {
   const token = req.header('Authorization')?.replace('Bearer ', '');
-  if (!token) return res.status(401).json({ error: 'Access denied' });
-
+  if (!token) return res.status(401).json({ error: 'Akses ditolak — token tidak ada' });
   try {
-    const verified = jwt.verify(token, process.env.JWT_SECRET || 'secret');
+    const verified = jwt.verify(token, JWT_SECRET);
     req.userId = verified.userId;
     next();
-  } catch (error) {
-    res.status(400).json({ error: 'Invalid token' });
+  } catch {
+    res.status(400).json({ error: 'Token tidak valid atau sudah expired' });
   }
 };
 
-// Get current user
+// ── GET /me ───────────────────────────────────────────────────────────────────
 router.get('/me', authenticate, async (req, res) => {
   try {
     const user = await prisma.user.findUnique({
-      where: { id: req.userId },
-      include: { player: true }
+      where:   { id: req.userId },
+      include: { player: true },
     });
+    if (!user) return res.status(404).json({ error: 'User tidak ditemukan' });
     res.json({ user, player: user.player });
   } catch (error) {
-    res.status(500).json({ error: 'Failed to get user' });
+    console.error('[Auth] /me error:', error.message);
+    res.status(500).json({ error: 'Gagal mengambil data user' });
   }
 });
 
