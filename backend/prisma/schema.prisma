@@ -13,6 +13,8 @@ model User {
   email         String   @unique
   passwordHash  String
   guestAccount  Boolean  @default(false)
+  isBanned      Boolean  @default(false)
+  bannedAt      DateTime?
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
@@ -33,57 +35,57 @@ model Player {
   createdAt        DateTime      @default(now())
   updatedAt        DateTime      @updatedAt
 
-  user             User          @relation(fields: [userId], references: [id])
-  sessions         GameSession[]
-  rounds           GameRound[]
-  rtpProfile       RTPProfile?
+  user       User          @relation(fields: [userId], references: [id])
+  sessions   GameSession[]
+  rounds     GameRound[]
+  rtpProfile RTPProfile?
 }
 
 model GameSession {
-  id                 String      @id @default(uuid())
-  playerId           String
-  startedAt          DateTime    @default(now())
-  endedAt            DateTime?
-  totalRounds        Int         @default(0)
-  totalBet           Float       @default(0)
-  totalWon           Float       @default(0)
-  averageBet         Float       @default(0)
-  sessionProfit      Float       @default(0)
-  longestWinStreak   Int         @default(0)
-  longestLoseStreak  Int         @default(0)
+  id                String      @id @default(uuid())
+  playerId          String
+  startedAt         DateTime    @default(now())
+  endedAt           DateTime?
+  totalRounds       Int         @default(0)
+  totalBet          Float       @default(0)
+  totalWon          Float       @default(0)
+  averageBet        Float       @default(0)
+  sessionProfit     Float       @default(0)
+  longestWinStreak  Int         @default(0)
+  longestLoseStreak Int         @default(0)
 
-  player  Player      @relation(fields: [playerId], references: [id])
-  rounds  GameRound[]
+  player Player      @relation(fields: [playerId], references: [id])
+  rounds GameRound[]
 }
 
 model GameRound {
-  id                String      @id @default(uuid())
-  sessionId         String
-  playerId          String
-  betAmount         Float
-  payout            Float       @default(0)
-  outcome           String      // 'win' | 'lose'
-  resultingBalance  Float
-  winRateUsed       Float
-  streakBefore      Int         @default(0)
-  streakAfter       Int         @default(0)
-  createdAt         DateTime    @default(now())
+  id               String      @id @default(uuid())
+  sessionId        String
+  playerId         String
+  betAmount        Float
+  payout           Float       @default(0)
+  outcome          String
+  resultingBalance Float
+  winRateUsed      Float
+  streakBefore     Int         @default(0)
+  streakAfter      Int         @default(0)
+  createdAt        DateTime    @default(now())
 
-  session   GameSession @relation(fields: [sessionId], references: [id])
-  player    Player      @relation(fields: [playerId], references: [id])
+  session GameSession @relation(fields: [sessionId], references: [id])
+  player  Player      @relation(fields: [playerId], references: [id])
 }
 
 model RTPProfile {
-  id               String   @id @default(uuid())
-  playerId         String   @unique
-  currentWinRate   Float    @default(0.45)
-  winModifier      Float    @default(0)
-  losingStreak     Int      @default(0)
-  winningStreak    Int      @default(0)
-  sessionFatigue   Float    @default(0)
-  pityCounter      Int      @default(0)
-  volatilityLevel  Float    @default(1.0)
-  updatedAt        DateTime @updatedAt
+  id              String   @id @default(uuid())
+  playerId        String   @unique
+  currentWinRate  Float    @default(0.45)
+  winModifier     Float    @default(0)
+  losingStreak    Int      @default(0)
+  winningStreak   Int      @default(0)
+  sessionFatigue  Float    @default(0)
+  pityCounter     Int      @default(0)
+  volatilityLevel Float    @default(1.0)
+  updatedAt       DateTime @updatedAt
 
   player Player @relation(fields: [playerId], references: [id])
 }
