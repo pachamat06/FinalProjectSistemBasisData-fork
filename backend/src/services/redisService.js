@@ -1,201 +1,191 @@
-const { getRedis } = require('../config/redis');
+/**
+ * redisService.js — Implementasi tanpa Redis
+ *
+ * Data sementara (session, cooldown, feed, streak, online)
+ * disimpan di memori (reset saat server restart).
+ *
+ * Data ranking (leaderboard) diambil langsung dari PostgreSQL.
+ */
 
-const KEYS = {
-  leaderboard: (metric) => `leaderboard:${metric}`,
-  playerSession: (id) => `session:${id}`,
-  rtpProfile: (id) => `rtp:${id}`,
-  spinCooldown: (id) => `cooldown:${id}`,
-  onlineCount: 'online:count',
-  onlinePlayers: 'online:players',
-  recentWins: 'feed:wins',
-  hotStreaks: 'feed:streaks',
-  gameState: (id) => `gamestate:${id}`,
-};
+const prisma = require('../config/prisma');
 
-const COOLDOWN_MS = 1500; // 1.5s between spins
-const LEADERBOARD_TTL = 300; // 5 min cache
-const RTP_CACHE_TTL = 60;
+// ─────────────────────────────────────────────────────────────────────────────
+// In-memory stores
+// ─────────────────────────────────────────────────────────────────────────────
+const sessions     = new Map();   // playerId → { sessionId, startedAt }
+const cooldowns    = new Map();   // playerId → expiry timestamp (ms)
+const onlinePlayers= new Set();   // Set<playerId>
+const winFeed      = [];          // Array of win entries (max 50)
+const hotStreaks   = new Map();   // playerId → streak count
 
-// ────────────────────────────────────────────────
-// Leaderboard
-// ────────────────────────────────────────────────
+const COOLDOWN_MS  = 1500;
 
-async function updateLeaderboard(playerId, scores) {
-  const redis = getRedis();
-  const pipeline = redis.pipeline();
-
-  if (scores.totalProfit !== undefined) {
-    pipeline.zadd(KEYS.leaderboard('profit'), scores.totalProfit, playerId);
-  }
-  if (scores.highestSingleWin !== undefined) {
-    pipeline.zadd(KEYS.leaderboard('highestWin'), scores.highestSingleWin, playerId);
-  }
-  if (scores.totalRounds !== undefined) {
-    pipeline.zadd(KEYS.leaderboard('mostActive'), scores.totalRounds, playerId);
-  }
-
-  await pipeline.exec();
-}
-
+// ─────────────────────────────────────────────────────────────────────────────
+// Leaderboard — dari PostgreSQL langsung
+// ─────────────────────────────────────────────────────────────────────────────
 async function getLeaderboard(metric = 'profit', limit = 20) {
-  const redis = getRedis();
-  const key = KEYS.leaderboard(metric);
-  // Get top players descending
-  const results = await redis.zrevrange(key, 0, limit - 1, 'WITHSCORES');
+  const players = await prisma.player.findMany({
+    take: 200,
+    select: {
+      id: true,
+      totalProfit:     true,
+      highestSingleWin:true,
+      totalWins:       true,
+      totalLosses:     true,
+    },
+  });
 
-  const parsed = [];
-  for (let i = 0; i < results.length; i += 2) {
-    parsed.push({
-      playerId: results[i],
-      score: parseFloat(results[i + 1]),
-      rank: Math.floor(i / 2) + 1,
-    });
+  let sorted;
+  if (metric === 'highestWin') {
+    sorted = players.sort((a, b) => b.highestSingleWin - a.highestSingleWin);
+  } else if (metric === 'mostActive') {
+    sorted = players.sort((a, b) =>
+      (b.totalWins + b.totalLosses) - (a.totalWins + a.totalLosses)
+    );
+  } else {
+    // default: profit
+    sorted = players.sort((a, b) => b.totalProfit - a.totalProfit);
   }
-  return parsed;
+
+  return sorted.slice(0, limit).map((p, i) => ({
+    playerId: p.id,
+    score:
+      metric === 'highestWin' ? p.highestSingleWin
+      : metric === 'mostActive' ? p.totalWins + p.totalLosses
+      : p.totalProfit,
+    rank: i + 1,
+  }));
 }
 
-// ────────────────────────────────────────────────
-// Spin cooldown (anti-spam)
-// ────────────────────────────────────────────────
+// updateLeaderboard tidak perlu melakukan apa-apa —
+// data sudah langsung tersimpan ke Player di DB oleh gameService
+async function updateLeaderboard() {
+  // no-op: leaderboard dibaca langsung dari DB
+}
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Spin cooldown — in-memory
+// ─────────────────────────────────────────────────────────────────────────────
 async function checkAndSetCooldown(playerId) {
-  const redis = getRedis();
-  const key = KEYS.spinCooldown(playerId);
-  const exists = await redis.get(key);
-  if (exists) return false; // on cooldown
-
-  await redis.set(key, '1', 'PX', COOLDOWN_MS);
-  return true; // allowed
+  const now    = Date.now();
+  const expiry = cooldowns.get(playerId);
+  if (expiry && now < expiry) return false; // masih cooldown
+  cooldowns.set(playerId, now + COOLDOWN_MS);
+  return true;
 }
 
-// ────────────────────────────────────────────────
-// Session management
-// ────────────────────────────────────────────────
-
+// ─────────────────────────────────────────────────────────────────────────────
+// Player session — in-memory
+// ─────────────────────────────────────────────────────────────────────────────
 async function setPlayerSession(playerId, sessionData) {
-  const redis = getRedis();
-  await redis.setex(
-    KEYS.playerSession(playerId),
-    3600, // 1 hour TTL
-    JSON.stringify(sessionData)
-  );
+  sessions.set(playerId, { ...sessionData, _savedAt: Date.now() });
 }
 
 async function getPlayerSession(playerId) {
-  const redis = getRedis();
-  const data = await redis.get(KEYS.playerSession(playerId));
-  return data ? JSON.parse(data) : null;
+  const s = sessions.get(playerId);
+  if (!s) return null;
+  // Expire setelah 1 jam
+  if (Date.now() - s._savedAt > 3600_000) {
+    sessions.delete(playerId);
+    return null;
+  }
+  return s;
 }
 
 async function deletePlayerSession(playerId) {
-  const redis = getRedis();
-  await redis.del(KEYS.playerSession(playerId));
+  sessions.delete(playerId);
 }
 
-// ────────────────────────────────────────────────
-// Online player counter
-// ────────────────────────────────────────────────
-
+// ─────────────────────────────────────────────────────────────────────────────
+// Online players — in-memory
+// ─────────────────────────────────────────────────────────────────────────────
 async function playerConnected(playerId) {
-  const redis = getRedis();
-  await redis.sadd(KEYS.onlinePlayers, playerId);
+  if (playerId) onlinePlayers.add(playerId);
 }
 
 async function playerDisconnected(playerId) {
-  const redis = getRedis();
-  await redis.srem(KEYS.onlinePlayers, playerId);
+  onlinePlayers.delete(playerId);
 }
 
 async function getOnlineCount() {
-  const redis = getRedis();
-  return await redis.scard(KEYS.onlinePlayers);
+  return onlinePlayers.size;
 }
 
-// ────────────────────────────────────────────────
-// Recent win feed
-// ────────────────────────────────────────────────
-
+// ─────────────────────────────────────────────────────────────────────────────
+// Recent win feed — in-memory (max 50 item)
+// ─────────────────────────────────────────────────────────────────────────────
 async function pushWinFeed(entry) {
-  const redis = getRedis();
-  const key = KEYS.recentWins;
-  await redis.lpush(key, JSON.stringify(entry));
-  await redis.ltrim(key, 0, 49); // keep last 50
-  await redis.expire(key, 3600);
+  winFeed.unshift(entry);
+  if (winFeed.length > 50) winFeed.length = 50;
 }
 
 async function getWinFeed(limit = 20) {
-  const redis = getRedis();
-  const items = await redis.lrange(KEYS.recentWins, 0, limit - 1);
-  return items.map((i) => JSON.parse(i));
+  return winFeed.slice(0, limit);
 }
 
-// ────────────────────────────────────────────────
-// Hot streak tracking
-// ────────────────────────────────────────────────
-
+// ─────────────────────────────────────────────────────────────────────────────
+// Hot streaks — in-memory
+// ─────────────────────────────────────────────────────────────────────────────
 async function updateHotStreak(playerId, streak) {
-  const redis = getRedis();
-  await redis.zadd(KEYS.hotStreaks, streak, playerId);
+  if (streak > 0) hotStreaks.set(playerId, streak);
+  else hotStreaks.delete(playerId);
 }
 
 async function getHotStreaks(limit = 10) {
-  const redis = getRedis();
-  const results = await redis.zrevrange(KEYS.hotStreaks, 0, limit - 1, 'WITHSCORES');
-  const parsed = [];
-  for (let i = 0; i < results.length; i += 2) {
-    parsed.push({ playerId: results[i], streak: parseInt(results[i + 1]) });
-  }
-  return parsed;
+  return [...hotStreaks.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, limit)
+    .map(([playerId, streak]) => ({ playerId, streak }));
 }
 
-// ────────────────────────────────────────────────
-// RTP cache
-// ────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+// RTP cache — no-op (query langsung ke DB, cukup cepat dengan Prisma)
+// ─────────────────────────────────────────────────────────────────────────────
+async function cacheRTPProfile()    {}
+async function getCachedRTPProfile(){ return null; }
+async function invalidateRTPCache() {}
 
-async function cacheRTPProfile(playerId, profile) {
-  const redis = getRedis();
-  await redis.setex(KEYS.rtpProfile(playerId), RTP_CACHE_TTL, JSON.stringify(profile));
-}
-
-async function getCachedRTPProfile(playerId) {
-  const redis = getRedis();
-  const data = await redis.get(KEYS.rtpProfile(playerId));
-  return data ? JSON.parse(data) : null;
-}
-
-async function invalidateRTPCache(playerId) {
-  const redis = getRedis();
-  await redis.del(KEYS.rtpProfile(playerId));
-}
-
-// ────────────────────────────────────────────────
-// System stats
-// ────────────────────────────────────────────────
-
+// ─────────────────────────────────────────────────────────────────────────────
+// System stats — dari DB + in-memory
+// ─────────────────────────────────────────────────────────────────────────────
 async function getSystemStats() {
-  const redis = getRedis();
-  const onlineCount = await getOnlineCount();
-  const dbSize = await redis.dbsize();
-  return { onlineCount, redisKeys: dbSize };
+  return {
+    onlineCount: onlinePlayers.size,
+    redisKeys:   0,
+  };
 }
 
 module.exports = {
-  KEYS,
-  updateLeaderboard,
+  // Leaderboard
   getLeaderboard,
+  updateLeaderboard,
+
+  // Cooldown
   checkAndSetCooldown,
+
+  // Session
   setPlayerSession,
   getPlayerSession,
   deletePlayerSession,
+
+  // Online
   playerConnected,
   playerDisconnected,
   getOnlineCount,
+
+  // Win feed
   pushWinFeed,
   getWinFeed,
+
+  // Hot streaks
   updateHotStreak,
   getHotStreaks,
+
+  // RTP cache (no-op)
   cacheRTPProfile,
   getCachedRTPProfile,
   invalidateRTPCache,
+
+  // Stats
   getSystemStats,
 };

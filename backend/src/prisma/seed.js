@@ -9,28 +9,26 @@ const USERNAMES = [
   'SilverFox', 'IronChance', 'MysticWheel', 'StormCrafter', 'ZenithBet',
 ];
 
-// Password default untuk semua seed player: "seed1234"
-const SEED_PASSWORD_HASH = bcrypt.hashSync('seed1234', 10);
-
 function rand(min, max)    { return Math.random() * (max - min) + min; }
 function randInt(min, max) { return Math.floor(rand(min, max)); }
 
 async function seed() {
   console.log('🌱 Seeding database...');
 
-  // Clear semua data lama (urutan penting — child dulu)
+  // Clear semua data lama
   await prisma.gameRound.deleteMany();
   await prisma.gameSession.deleteMany();
   await prisma.rTPProfile.deleteMany();
   await prisma.player.deleteMany();
   await prisma.user.deleteMany();
 
+  const seedPasswordHash = await bcrypt.hash('password', 10);
   const players = [];
 
-  const seedPasswordHash = await bcrypt.hash('password', 10);
-
   for (let i = 0; i < 20; i++) {
-    const username = USERNAMES[i];
+    const baseUsername = USERNAMES[i];
+    const email        = `${baseUsername.toLowerCase()}@seed.local`;
+
     const wins        = randInt(50, 500);
     const losses      = randInt(50, 600);
     const totalBet    = (wins + losses) * rand(100, 500);
@@ -38,23 +36,10 @@ async function seed() {
     const totalProfit = totalWon - totalBet;
     const balance     = Math.max(500, 10000 + totalProfit * rand(0.1, 0.3));
 
-    // Buat User dulu — schema mengharuskan Player.userId (FK ke User)
-    const user = await prisma.user.create({
-      data: {
-        username,
-        email:        `${username.toLowerCase()}@seed.com`,
-        passwordHash: SEED_PASSWORD_HASH,
-        guestAccount: false,
-      },
-    });
-
-    const baseUsername = USERNAMES[i];
-    const email = `${baseUsername.toLowerCase()}@seed.local`;
-
     const { player } = await prisma.$transaction(async (tx) => {
       const user = await tx.user.create({
         data: {
-          username: baseUsername,
+          username:     baseUsername,
           email,
           passwordHash: seedPasswordHash,
           guestAccount: false,
@@ -63,15 +48,15 @@ async function seed() {
 
       const createdPlayer = await tx.player.create({
         data: {
-          userId: user.id,
-          username: user.username,
-          balance: parseFloat(balance.toFixed(2)),
-          level: randInt(1, 50),
-          totalWins: wins,
-          totalLosses: losses,
-          totalProfit: parseFloat(totalProfit.toFixed(2)),
-          totalBetAmount: parseFloat(totalBet.toFixed(2)),
-          highestSingleWin: parseFloat((rand(500, 10000)).toFixed(2)),
+          userId:          user.id,
+          username:        user.username,
+          balance:         parseFloat(balance.toFixed(2)),
+          level:           randInt(1, 50),
+          totalWins:       wins,
+          totalLosses:     losses,
+          totalProfit:     parseFloat(totalProfit.toFixed(2)),
+          totalBetAmount:  parseFloat(totalBet.toFixed(2)),
+          highestSingleWin:parseFloat(rand(500, 10000).toFixed(2)),
         },
       });
 
@@ -88,7 +73,7 @@ async function seed() {
         winningStreak:  randInt(0, 4),
         sessionFatigue: parseFloat(rand(0, 0.08).toFixed(4)),
         pityCounter:    randInt(0, 8),
-        volatilityLevel: 1.0,
+        volatilityLevel:1.0,
       },
     });
 
@@ -132,26 +117,11 @@ async function seed() {
     }
 
     players.push(player);
-    process.stdout.write(`  ✓ ${username} (user: ${username.toLowerCase()}@seed.com)\n`);
+    process.stdout.write(`  ✓ ${baseUsername}\n`);
   }
 
-  console.log('\n✅ Seed complete — 20 players created');
-  console.log('   Login dengan email @seed.com dan password: seed1234');
-
-  // Seed Redis leaderboard
-  try {
-    const { getRedis } = require('../config/redis');
-    const redis = getRedis();
-    for (const p of players) {
-      await redis.zadd('leaderboard:profit',    p.totalProfit,                    p.id);
-      await redis.zadd('leaderboard:highestWin', p.highestSingleWin,              p.id);
-      await redis.zadd('leaderboard:mostActive', p.totalWins + p.totalLosses,     p.id);
-    }
-    console.log('✅ Redis leaderboard seeded');
-    await redis.quit();
-  } catch (e) {
-    console.warn('⚠️  Redis seed skipped (not connected):', e.message);
-  }
+  console.log(`\n✅ Seed complete — ${players.length} players created`);
+  console.log('   Login: email @seed.local, password: password');
 
   await prisma.$disconnect();
 }
