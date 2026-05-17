@@ -29,7 +29,7 @@ function AdminPinGate({ onUnlock }) {
         <h2 className="font-orbitron" style={{ color: '#f87171', fontSize: '22px', marginBottom: '8px', letterSpacing: '0.15em' }}>ADMIN ACCESS</h2>
         <p className="font-rajdhani" style={{ color: '#6b7280', fontSize: '13px', marginBottom: '32px' }}>Halaman ini hanya untuk keperluan internal & debug.</p>
         <form onSubmit={handle}>
-          <input type="password" value={pin} onChange={(e) => { setPin(e.target.value); setError(''); }} placeholder="Masukkan PIN admin"
+          <input type="password" value={pin} onChange={(e) => { setPin(e.target.value); setError(''); }} placeholder="PINnya: 1234"
             className="casino-input" style={{ textAlign: 'center', fontSize: '18px', letterSpacing: '0.3em', marginBottom: '16px' }} autoFocus />
           {error && <p className="font-rajdhani" style={{ color: '#f87171', fontSize: '13px', marginBottom: '12px' }}>{error}</p>}
           <button type="submit" className="font-orbitron font-bold" style={{ width: '100%', padding: '12px', borderRadius: '10px', background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.5)', color: '#f87171', fontSize: '13px', letterSpacing: '0.15em', cursor: 'pointer' }}>MASUK</button>
