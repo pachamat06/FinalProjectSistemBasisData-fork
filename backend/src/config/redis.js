@@ -4,21 +4,24 @@ let redis;
 
 function getRedis() {
   if (!redis) {
-    redis = new Redis(process.env.REDIS_URL || 'redis://localhost:6379', {
+    const redisUrl = process.env.REDIS_URL || 'redis://default:gQAAAAAAAfL5AAIgcDIxZDlkOGU2ZTk3NWU0NTM5YjU2MjY1OTBjNTY0Mjg0Yw@main-reindeer-127737.upstash.io:6379';
+
+    // ✅ Upstash pakai rediss:// (TLS) — ioredis butuh tls: {} untuk ini
+    const isTLS = redisUrl.startsWith('rediss://');
+
+    redis = new Redis(redisUrl, {
+      tls:                  isTLS ? {} : undefined,
       maxRetriesPerRequest: 3,
       retryStrategy(times) {
-        const delay = Math.min(times * 100, 3000);
-        return delay;
+        return Math.min(times * 100, 3000);
       },
       reconnectOnError(err) {
-        const targetError = 'READONLY';
-        if (err.message.includes(targetError)) return true;
-        return false;
+        return err.message.includes('READONLY');
       },
     });
 
-    redis.on('connect', () => console.log('[Redis] Connected'));
-    redis.on('error', (err) => console.error('[Redis] Error:', err.message));
+    redis.on('connect',      () => console.log('[Redis] Connected'));
+    redis.on('error',    (err) => console.error('[Redis] Error:', err.message));
     redis.on('reconnecting', () => console.log('[Redis] Reconnecting...'));
   }
   return redis;

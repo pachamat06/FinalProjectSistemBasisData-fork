@@ -1,13 +1,14 @@
 import { io } from 'socket.io-client';
 
+// ✅ Pakai VITE_SOCKET_URL — set di Vercel dashboard ke URL Railway backend
 const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || 'http://localhost:3001';
 
 let socket          = null;
-let connectedPlayer = null; 
+let connectedPlayer = null;
 
 export function getSocket(playerId) {
   if (socket && connectedPlayer !== playerId) {
-    console.log(`[Socket] Player berubah (${connectedPlayer} → ${playerId}), reconnecting...`);
+    console.log(`[Socket] Player berubah, reconnecting...`);
     socket.disconnect();
     socket          = null;
     connectedPlayer = null;
@@ -15,7 +16,6 @@ export function getSocket(playerId) {
 
   if (!socket) {
     connectedPlayer = playerId;
-
     socket = io(SOCKET_URL, {
       query:               { playerId: playerId || '' },
       transports:          ['websocket', 'polling'],
@@ -27,7 +27,6 @@ export function getSocket(playerId) {
     socket.on('disconnect',    () => console.log('[Socket] Disconnected'));
     socket.on('connect_error', (e) => console.error('[Socket] Error:', e.message));
   }
-
   return socket;
 }
 

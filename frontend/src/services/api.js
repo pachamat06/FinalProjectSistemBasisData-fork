@@ -1,6 +1,8 @@
 import axios from 'axios';
 
 const api = axios.create({
+  // ✅ Pakai env variable — set VITE_API_URL di Vercel dashboard
+  // Local dev: bisa pakai /api (Vite proxy) atau http://localhost:3001/api
   baseURL: import.meta.env.VITE_API_URL || '/api',
   timeout: 15000,
   headers: { 'Content-Type': 'application/json' },
@@ -21,10 +23,10 @@ api.interceptors.response.use(
 );
 
 // Player
-export const fetchPlayers      = ()             => api.get('/player');
-export const fetchPlayer       = (id)           => api.get(`/player/${id}`);
-export const fetchPlayerHistory= (id, limit=50) => api.get(`/player/${id}/history?limit=${limit}`);
-export const fetchPlayerStats  = (id)           => api.get(`/player/${id}/stats`);
+export const fetchPlayers       = ()              => api.get('/player');
+export const fetchPlayer        = (id)            => api.get(`/player/${id}`);
+export const fetchPlayerHistory = (id, limit=50)  => api.get(`/player/${id}/history?limit=${limit}`);
+export const fetchPlayerStats   = (id)            => api.get(`/player/${id}/stats`);
 
 // Game
 export const spinGame     = (playerId, betAmount) => api.post('/game/spin', { playerId, betAmount });
@@ -39,16 +41,16 @@ export const resetRTP        = (playerId) => api.post(`/rtp/reset/${playerId}`);
 export const fetchLeaderboard = (metric = 'profit') => api.get(`/leaderboard?metric=${metric}`);
 
 // Admin — tools
-export const simulateSpins  = (playerId, count)            => api.post('/admin/simulate-spins', { playerId, count });
-export const fetchSystemStats = ()                         => api.get('/admin/system-stats');
-export const forceWinStreak = (playerId, streakLength)     => api.post('/admin/force-win-streak', { playerId, streakLength });
-export const forceLoseStreak= (playerId, streakLength)     => api.post('/admin/force-lose-streak', { playerId, streakLength });
-export const inspectRedis   = ()                           => api.get('/admin/inspect-redis');
+export const simulateSpins   = (playerId, count)        => api.post('/admin/simulate-spins', { playerId, count });
+export const fetchSystemStats= ()                       => api.get('/admin/system-stats');
+export const forceWinStreak  = (playerId, streakLength) => api.post('/admin/force-win-streak', { playerId, streakLength });
+export const forceLoseStreak = (playerId, streakLength) => api.post('/admin/force-lose-streak', { playerId, streakLength });
+export const inspectRedis    = ()                       => api.get('/admin/inspect-redis');
 
 // Admin — user management
-export const banUser   = (userId) => api.post(`/admin/ban/${userId}`);
-export const unbanUser = (userId) => api.post(`/admin/unban/${userId}`);
-export const deleteUser= (userId) => api.delete(`/admin/user/${userId}`);
+export const banUser    = (userId) => api.post(`/admin/ban/${userId}`);
+export const unbanUser  = (userId) => api.post(`/admin/unban/${userId}`);
+export const deleteUser = (userId) => api.delete(`/admin/user/${userId}`);
 
 // Auth — self-delete
 export const deleteSelfAccount = () => api.delete('/auth/me');
