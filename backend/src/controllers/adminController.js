@@ -1,19 +1,22 @@
 const prisma = require('../config/prisma');
 const { processSpin, getOrCreateRTPProfile } = require('../services/gameService');
-const { getSystemStats, getPlayerSession, setPlayerSession, invalidateRTPCache, deletePlayerSession } = require('../services/redisService');
+const {
+  getSystemStats, getPlayerSession, setPlayerSession,
+  deletePlayerSession, invalidateRTPCache,
+} = require('../services/redisService');
 const { getRedis } = require('../config/redis');
 
 const simulateSpins = async (req, res) => {
   try {
     const { playerId, count = 100 } = req.body;
     let sessionData = await getPlayerSession(playerId);
-    let sessionId = sessionData?.sessionId;
+    let sessionId   = sessionData?.sessionId;
     if (!sessionId) {
       const session = await prisma.gameSession.create({ data: { playerId } });
       sessionId = session.id;
       await setPlayerSession(playerId, { sessionId, startedAt: Date.now() });
     }
-    const results = [];
+    const results   = [];
     const spinCount = Math.min(count, 500);
     for (let i = 0; i < spinCount; i++) {
       const player = await prisma.player.findUnique({ where: { id: playerId } });
@@ -23,22 +26,40 @@ const simulateSpins = async (req, res) => {
     }
     const wins = results.filter((r) => r.outcome === 'win').length;
     res.json({
-      totalSpins: results.length, wins, losses: results.length - wins,
+      totalSpins:    results.length,
+      wins,
+      losses:        results.length - wins,
       actualWinRate: parseFloat((wins / results.length).toFixed(4)),
-      lastResult: results[results.length - 1],
+      lastResult:    results[results.length - 1],
     });
   } catch (err) { res.status(500).json({ error: err.message }); }
 };
 
+// Redis error ditangani secara terpisah
 const getSystemStatsAdmin = async (req, res) => {
   try {
-    const [stats, playerCount, roundCount, bannedCount] = await Promise.all([
-      getSystemStats(),
+    // Redis bisa gagal (misal tidak jalan di lokal) — jangan crash seluruh endpoint
+    let redisStats = { onlineCount: 0, redisKeys: 0, redisStatus: 'offline' };
+    try {
+      const stats = await getSystemStats();
+      redisStats  = { ...stats, redisStatus: 'online' };
+    } catch (_) {
+      // Redis tidak tersedia — lanjut dengan nilai default
+    }
+
+    const [playerCount, roundCount, bannedCount] = await Promise.all([
       prisma.player.count(),
       prisma.gameRound.count(),
-      prisma.user.count({ where: { isBanned: true } }),
+      // Coba query isBanned, fallback 0 jika field belum ada (belum db:push)
+      prisma.user.count({ where: { isBanned: true } }).catch(() => 0),
     ]);
-    res.json({ ...stats, playerCount, totalRounds: roundCount, bannedUsers: bannedCount });
+
+    res.json({
+      ...redisStats,
+      playerCount,
+      totalRounds: roundCount,
+      bannedUsers: bannedCount,
+    });
   } catch (err) { res.status(500).json({ error: err.message }); }
 };
 
@@ -46,7 +67,7 @@ const forceWinStreak = async (req, res) => {
   try {
     const { playerId, streakLength = 5 } = req.body;
     await prisma.rTPProfile.upsert({
-      where: { playerId },
+      where:  { playerId },
       update: { winningStreak: streakLength, losingStreak: 0, winModifier: 0.2 },
       create: { playerId, winningStreak: streakLength, losingStreak: 0, winModifier: 0.2 },
     });
@@ -58,7 +79,7 @@ const forceLoseStreak = async (req, res) => {
   try {
     const { playerId, streakLength = 5 } = req.body;
     await prisma.rTPProfile.upsert({
-      where: { playerId },
+      where:  { playerId },
       update: { losingStreak: streakLength, winningStreak: 0, winModifier: -0.15 },
       create: { playerId, losingStreak: streakLength, winningStreak: 0, winModifier: -0.15 },
     });
@@ -87,15 +108,14 @@ const banUser = async (req, res) => {
   try {
     const { userId } = req.params;
     const user = await prisma.user.findUnique({ where: { id: userId } });
-    if (!user)           return res.status(404).json({ error: 'User tidak ditemukan' });
-    if (user.isBanned)   return res.status(400).json({ error: 'User sudah di-ban' });
+    if (!user)         return res.status(404).json({ error: 'User tidak ditemukan' });
+    if (user.isBanned) return res.status(400).json({ error: 'User sudah di-ban' });
 
     await prisma.user.update({
       where: { id: userId },
       data:  { isBanned: true, bannedAt: new Date() },
     });
 
-    // Hapus session Redis agar user langsung logout
     const player = await prisma.player.findUnique({ where: { userId } });
     if (player) await deletePlayerSession(player.id).catch(() => {});
 
@@ -107,8 +127,8 @@ const unbanUser = async (req, res) => {
   try {
     const { userId } = req.params;
     const user = await prisma.user.findUnique({ where: { id: userId } });
-    if (!user)           return res.status(404).json({ error: 'User tidak ditemukan' });
-    if (!user.isBanned)  return res.status(400).json({ error: 'User tidak dalam status ban' });
+    if (!user)          return res.status(404).json({ error: 'User tidak ditemukan' });
+    if (!user.isBanned) return res.status(400).json({ error: 'User tidak dalam status ban' });
 
     await prisma.user.update({
       where: { id: userId },
@@ -122,18 +142,14 @@ const unbanUser = async (req, res) => {
 const deleteUser = async (req, res) => {
   try {
     const { userId } = req.params;
-    const user = await prisma.user.findUnique({
-      where:   { id: userId },
-      include: { player: true },
-    });
+    const user = await prisma.user.findUnique({ where: { id: userId }, include: { player: true } });
     if (!user) return res.status(404).json({ error: 'User tidak ditemukan' });
-
     await _deleteUserCascade(user);
     res.json({ success: true, message: `User ${user.username} berhasil dihapus` });
   } catch (err) { res.status(500).json({ error: err.message }); }
 };
 
-// ── Shared cascade delete helper ─────────────────────────────────────────────
+// ── Shared cascade delete (dipakai adminController & authRoutes /me DELETE) ──
 async function _deleteUserCascade(user) {
   const player = user.player ?? await prisma.player.findUnique({ where: { userId: user.id } });
 
@@ -147,19 +163,19 @@ async function _deleteUserCascade(user) {
     await tx.user.delete({ where: { id: user.id } });
   });
 
-  // Bersihkan Redis
   if (player) {
     await deletePlayerSession(player.id).catch(() => {});
     await invalidateRTPCache(player.id).catch(() => {});
-    const redis = getRedis();
-    await redis.zrem('leaderboard:profit',     player.id).catch(() => {});
-    await redis.zrem('leaderboard:highestWin', player.id).catch(() => {});
-    await redis.zrem('leaderboard:mostActive', player.id).catch(() => {});
+    try {
+      const redis = getRedis();
+      await redis.zrem('leaderboard:profit',     player.id);
+      await redis.zrem('leaderboard:highestWin', player.id);
+      await redis.zrem('leaderboard:mostActive', player.id);
+    } catch (_) {}   // Redis tidak wajib ada
   }
 }
 
 module.exports = {
   simulateSpins, getSystemStatsAdmin, forceWinStreak, forceLoseStreak,
-  inspectRedis, banUser, unbanUser, deleteUser,
-  _deleteUserCascade,   // dipakai authRoutes untuk self-delete
+  inspectRedis, banUser, unbanUser, deleteUser, _deleteUserCascade,
 };
