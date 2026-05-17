@@ -1,26 +1,30 @@
 import { create } from 'zustand';
-import { fetchPlayer, fetchPlayers, spinGame, fetchPlayerStats, fetchPlayerHistory } from '../services/api';
+import { fetchPlayer, fetchPlayers, fetchPlayerHistory } from '../services/api';
+
+
+// AUTH STORE
 
 export const useAuthStore = create((set, get) => ({
-  user: null,
-  token: null,
+  user:            null,
+  token:           null,
   isAuthenticated: false,
-  loading: false,
-  error: null,
+  loading:         false,
+  error:           null,
 
   login: async (usernameOrEmail, password) => {
     set({ loading: true, error: null });
     try {
       const response = await fetch('/api/auth/login', {
-        method: 'POST',
+        method:  'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ usernameOrEmail, password }),
+        body:    JSON.stringify({ usernameOrEmail, password }),
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error);
 
       localStorage.setItem('token', data.token);
-      set({ user: data.user, token: data.token, isAuthenticated: true, loading: false });
+      set({ user: { ...data.user, player: data.player }, token: data.token, isAuthenticated: true, loading: false });
+      if (data.player) usePlayerStore.getState().loadPlayerFromAuth(data.player);
       return data;
     } catch (err) {
       set({ error: err.message, loading: false });
@@ -32,15 +36,16 @@ export const useAuthStore = create((set, get) => ({
     set({ loading: true, error: null });
     try {
       const response = await fetch('/api/auth/register', {
-        method: 'POST',
+        method:  'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, email, password }),
+        body:    JSON.stringify({ username, email, password }),
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error);
 
       localStorage.setItem('token', data.token);
-      set({ user: data.user, token: data.token, isAuthenticated: true, loading: false });
+      set({ user: { ...data.user, player: data.player }, token: data.token, isAuthenticated: true, loading: false });
+      if (data.player) usePlayerStore.getState().loadPlayerFromAuth(data.player);
       return data;
     } catch (err) {
       set({ error: err.message, loading: false });
@@ -52,14 +57,21 @@ export const useAuthStore = create((set, get) => ({
     set({ loading: true, error: null });
     try {
       const response = await fetch('/api/auth/guest', {
-        method: 'POST',
+        method:  'POST',
         headers: { 'Content-Type': 'application/json' },
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error);
 
       localStorage.setItem('token', data.token);
-      set({ user: data.user, token: data.token, isAuthenticated: true, loading: false });
+      // Tandai sebagai guest di state
+      set({
+        user:            { ...data.user, player: data.player, guestAccount: true },
+        token:           data.token,
+        isAuthenticated: true,
+        loading:         false,
+      });
+      if (data.player) usePlayerStore.getState().loadPlayerFromAuth(data.player);
       return data;
     } catch (err) {
       set({ error: err.message, loading: false });
@@ -67,9 +79,27 @@ export const useAuthStore = create((set, get) => ({
     }
   },
 
-  logout: () => {
+  // Logout guest
+  logout: async () => {
+    const { user, token } = get();
+    const isGuest = user?.guestAccount;
+
+    // Clear lokal dulu agar UI langsung redirect
     localStorage.removeItem('token');
+    usePlayerStore.getState().clearPlayer();
     set({ user: null, token: null, isAuthenticated: false });
+
+    // Background: hapus akun guest dari DB
+    if (isGuest && token) {
+      try {
+        await fetch('/api/auth/me', {
+          method:  'DELETE',
+          headers: { Authorization: `Bearer ${token}` },
+        });
+      } catch {
+        // Tidak perlu handle error — DB akan dibersihkan oleh cleanupGuests.js
+      }
+    }
   },
 
   checkAuth: async () => {
@@ -83,21 +113,26 @@ export const useAuthStore = create((set, get) => ({
       const data = await response.json();
       if (response.ok) {
         set({ user: data.user, token, isAuthenticated: true });
+        const player = data.player ?? data.user?.player;
+        if (player) usePlayerStore.getState().loadPlayerFromAuth(player);
         return data;
       } else {
         localStorage.removeItem('token');
       }
-    } catch (err) {
+    } catch {
       localStorage.removeItem('token');
     }
   },
 }));
 
+
+// PLAYER STORE
+
 export const usePlayerStore = create((set, get) => ({
   currentPlayer: null,
-  players: [],
-  loading: false,
-  error: null,
+  players:       [],
+  loading:       false,
+  error:         null,
 
   setCurrentPlayer: (player) => set({ currentPlayer: player }),
 
@@ -114,9 +149,9 @@ export const usePlayerStore = create((set, get) => ({
     }
   },
 
-  loadPlayerFromAuth: (player) => {
-    set({ currentPlayer: player });
-  },
+  loadPlayerFromAuth: (player) => set({ currentPlayer: player }),
+
+  clearPlayer: () => set({ currentPlayer: null }),
 
   refreshPlayer: async (id) => {
     try {
@@ -139,22 +174,23 @@ export const usePlayerStore = create((set, get) => ({
   },
 }));
 
-export const useGameStore = create((set, get) => ({
-  isSpinning: false,
-  lastResult: null,
-  history: [],
-  spinCount: 0,
+
+// GAME STORE
+
+export const useGameStore = create((set) => ({
+  isSpinning:   false,
+  lastResult:   null,
+  history:      [],
+  spinCount:    0,
   notification: null,
 
   setSpinning: (v) => set({ isSpinning: v }),
 
-  addResult: (result) => {
-    set((state) => ({
-      lastResult: result,
-      history: [result, ...state.history].slice(0, 100),
-      spinCount: state.spinCount + 1,
-    }));
-  },
+  addResult: (result) => set((state) => ({
+    lastResult: result,
+    history:    [result, ...state.history].slice(0, 100),
+    spinCount:  state.spinCount + 1,
+  })),
 
   setNotification: (msg) => {
     set({ notification: msg });
@@ -171,28 +207,32 @@ export const useGameStore = create((set, get) => ({
   },
 }));
 
+
+// LEADERBOARD STORE
+
 export const useLeaderboardStore = create((set) => ({
   leaderboard: [],
-  recentWins: [],
-  hotStreaks: [],
-  metric: 'profit',
+  recentWins:  [],
+  hotStreaks:  [],
+  metric:      'profit',
 
-  setLeaderboard: (data) => set({ leaderboard: data }),
-  setRecentWins: (data) => set({ recentWins: data }),
-  setHotStreaks: (data) => set({ hotStreaks: data }),
-  setMetric: (metric) => set({ metric }),
+  setLeaderboard: (data)   => set({ leaderboard: data }),
+  setRecentWins:  (data)   => set({ recentWins: data }),
+  setHotStreaks:  (data)   => set({ hotStreaks: data }),
+  setMetric:      (metric) => set({ metric }),
 
   updateFromSocket: (data) => {
     if (Array.isArray(data)) set({ leaderboard: data });
   },
 }));
 
+// SYSTEM STORE
 export const useSystemStore = create((set) => ({
   onlineCount: 0,
-  recentFeed: [],
+  recentFeed:  [],
 
   setOnlineCount: (count) => set({ onlineCount: count }),
-  addFeedItem: (item) => set((state) => ({
+  addFeedItem:    (item)  => set((state) => ({
     recentFeed: [item, ...state.recentFeed].slice(0, 30),
   })),
 }));
