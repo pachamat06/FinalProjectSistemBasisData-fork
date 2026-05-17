@@ -2,32 +2,40 @@ require('dotenv').config();
 const express = require('express');
 const cors    = require('cors');
 
-const playerRoutes    = require('./routes/playerRoutes');
-const gameRoutes      = require('./routes/gameRoutes');
-const rtpRoutes       = require('./routes/rtpRoutes');
+const playerRoutes      = require('./routes/playerRoutes');
+const gameRoutes        = require('./routes/gameRoutes');
+const rtpRoutes         = require('./routes/rtpRoutes');
 const leaderboardRoutes = require('./routes/leaderboardRoutes');
-const adminRoutes     = require('./routes/adminRoutes');
-const authRoutes      = require('./routes/authRoutes');
+const adminRoutes       = require('./routes/adminRoutes');
+const authRoutes        = require('./routes/authRoutes');
 const { apiLimiter, errorHandler } = require('./middleware');
-const prisma          = require('./config/prisma');
+const prisma            = require('./config/prisma');
 
 const app = express();
-
-// ✅ Trust proxy — diperlukan untuk rate-limit di Vercel/Render
 app.set('trust proxy', 1);
 
-const allowedOrigins = [
-  process.env.CORS_ORIGIN,
-  'http://localhost:5173',
-].filter(Boolean);
-
+// ✅ CORS — izinkan semua *.vercel.app + localhost + CORS_ORIGIN yang dikonfigurasi
 app.use(cors({
   origin: (origin, callback) => {
-    if (!origin || allowedOrigins.includes(origin)) callback(null, true);
-    else callback(new Error('Not allowed by CORS'));
+    // Izinkan: tanpa origin (mobile/Postman), localhost, semua *.vercel.app
+    if (
+      !origin ||
+      origin.includes('localhost') ||
+      origin.endsWith('.vercel.app') ||
+      origin === process.env.CORS_ORIGIN
+    ) {
+      callback(null, true);
+    } else {
+      callback(new Error(`CORS: origin ${origin} tidak diizinkan`));
+    }
   },
-  credentials: true,
+  credentials:  true,
+  methods:      ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
 }));
+
+// Handle preflight OPTIONS untuk semua route
+app.options('*', cors());
 
 app.use(express.json());
 app.use(apiLimiter);
@@ -45,22 +53,18 @@ app.get('/api/health', (req, res) =>
 
 app.use(errorHandler);
 
-// ✅ Deteksi environment:
-// - Vercel (VERCEL=1): export app saja, tidak perlu listen & Socket.io
-// - Local dev: jalankan server + Socket.io seperti biasa
 const isVercel = process.env.VERCEL === '1';
 
 if (!isVercel) {
-  // ── Local / Render: jalankan Socket.io + server.listen ────────────────────
-  const http              = require('http');
-  const { Server }        = require('socket.io');
-  const { initSockets }   = require('./sockets/socketHandler');
-  const { getRedis }      = require('./config/redis');
+  const http            = require('http');
+  const { Server }      = require('socket.io');
+  const { initSockets } = require('./sockets/socketHandler');
+  const { getRedis }    = require('./config/redis');
 
   const server = http.createServer(app);
   const io = new Server(server, {
     cors: {
-      origin:      allowedOrigins,
+      origin:      (origin, cb) => cb(null, true), // sama dengan atas
       methods:     ['GET', 'POST'],
       credentials: true,
     },
@@ -69,30 +73,21 @@ if (!isVercel) {
 
   app.set('io', io);
   initSockets(io);
-  getRedis(); // eager connect Redis
+  getRedis();
 
   const PORT = process.env.PORT || 3001;
-  server.listen(PORT, () => {
-    console.log(`[Server] Running on port ${PORT}`);
-  });
+  server.listen(PORT, () => console.log(`[Server] Running on port ${PORT}`));
 
   process.on('SIGTERM', async () => {
     await prisma.$disconnect();
     process.exit(0);
   });
 } else {
-  // ── Vercel serverless: Socket.io tidak tersedia ────────────────────────────
-  // io = null → semua if (io) di gameService.js akan dilewati otomatis
   app.set('io', null);
-
-  // Inisialisasi Redis untuk session & cooldown
   try {
     const { getRedis } = require('./config/redis');
     getRedis();
-  } catch {
-    // Redis gagal konek — tidak crash app
-  }
+  } catch { /* Redis gagal konek */ }
 }
 
-// ✅ Export app untuk Vercel serverless
 module.exports = app;
