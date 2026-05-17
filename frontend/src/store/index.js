@@ -1,9 +1,9 @@
 import { create } from 'zustand';
-import { fetchPlayer, fetchPlayers, fetchPlayerHistory } from '../services/api';
+import api, { fetchPlayer, fetchPlayers, fetchPlayerHistory } from '../services/api';
 
-
+// ─────────────────────────────────────────────────────────────────────────────
 // AUTH STORE
-
+// ─────────────────────────────────────────────────────────────────────────────
 export const useAuthStore = create((set, get) => ({
   user:            null,
   token:           null,
@@ -14,13 +14,8 @@ export const useAuthStore = create((set, get) => ({
   login: async (usernameOrEmail, password) => {
     set({ loading: true, error: null });
     try {
-      const response = await fetch('/api/auth/login', {
-        method:  'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ usernameOrEmail, password }),
-      });
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error);
+      // ✅ Pakai axios api instance (pakai VITE_API_URL), bukan fetch manual
+      const data = await api.post('/auth/login', { usernameOrEmail, password });
 
       localStorage.setItem('token', data.token);
       set({ user: { ...data.user, player: data.player }, token: data.token, isAuthenticated: true, loading: false });
@@ -35,13 +30,7 @@ export const useAuthStore = create((set, get) => ({
   register: async (username, email, password) => {
     set({ loading: true, error: null });
     try {
-      const response = await fetch('/api/auth/register', {
-        method:  'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ username, email, password }),
-      });
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error);
+      const data = await api.post('/auth/register', { username, email, password });
 
       localStorage.setItem('token', data.token);
       set({ user: { ...data.user, player: data.player }, token: data.token, isAuthenticated: true, loading: false });
@@ -56,15 +45,9 @@ export const useAuthStore = create((set, get) => ({
   guestLogin: async () => {
     set({ loading: true, error: null });
     try {
-      const response = await fetch('/api/auth/guest', {
-        method:  'POST',
-        headers: { 'Content-Type': 'application/json' },
-      });
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error);
+      const data = await api.post('/auth/guest');
 
       localStorage.setItem('token', data.token);
-      // Tandai sebagai guest di state
       set({
         user:            { ...data.user, player: data.player, guestAccount: true },
         token:           data.token,
@@ -79,25 +62,20 @@ export const useAuthStore = create((set, get) => ({
     }
   },
 
-  // Logout guest
   logout: async () => {
     const { user, token } = get();
     const isGuest = user?.guestAccount;
 
-    // Clear lokal dulu agar UI langsung redirect
     localStorage.removeItem('token');
     usePlayerStore.getState().clearPlayer();
     set({ user: null, token: null, isAuthenticated: false });
 
-    // Background: hapus akun guest dari DB
+    // Auto-delete akun guest dari DB
     if (isGuest && token) {
       try {
-        await fetch('/api/auth/me', {
-          method:  'DELETE',
-          headers: { Authorization: `Bearer ${token}` },
-        });
+        await api.delete('/auth/me');
       } catch {
-        // Tidak perlu handle error — DB akan dibersihkan oleh cleanupGuests.js
+        // Tidak perlu handle error
       }
     }
   },
@@ -107,27 +85,20 @@ export const useAuthStore = create((set, get) => ({
     if (!token) return;
 
     try {
-      const response = await fetch('/api/auth/me', {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const data = await response.json();
-      if (response.ok) {
-        set({ user: data.user, token, isAuthenticated: true });
-        const player = data.player ?? data.user?.player;
-        if (player) usePlayerStore.getState().loadPlayerFromAuth(player);
-        return data;
-      } else {
-        localStorage.removeItem('token');
-      }
-    } catch {
+      const data = await api.get('/auth/me');
+      set({ user: data.user, token, isAuthenticated: true });
+      const player = data.player ?? data.user?.player;
+      if (player) usePlayerStore.getState().loadPlayerFromAuth(player);
+      return data;
+    } catch (err) {
       localStorage.removeItem('token');
     }
   },
 }));
 
-
+// ─────────────────────────────────────────────────────────────────────────────
 // PLAYER STORE
-
+// ─────────────────────────────────────────────────────────────────────────────
 export const usePlayerStore = create((set, get) => ({
   currentPlayer: null,
   players:       [],
@@ -174,9 +145,9 @@ export const usePlayerStore = create((set, get) => ({
   },
 }));
 
-
+// ─────────────────────────────────────────────────────────────────────────────
 // GAME STORE
-
+// ─────────────────────────────────────────────────────────────────────────────
 export const useGameStore = create((set) => ({
   isSpinning:   false,
   lastResult:   null,
@@ -207,9 +178,9 @@ export const useGameStore = create((set) => ({
   },
 }));
 
-
+// ─────────────────────────────────────────────────────────────────────────────
 // LEADERBOARD STORE
-
+// ─────────────────────────────────────────────────────────────────────────────
 export const useLeaderboardStore = create((set) => ({
   leaderboard: [],
   recentWins:  [],
@@ -226,7 +197,9 @@ export const useLeaderboardStore = create((set) => ({
   },
 }));
 
+// ─────────────────────────────────────────────────────────────────────────────
 // SYSTEM STORE
+// ─────────────────────────────────────────────────────────────────────────────
 export const useSystemStore = create((set) => ({
   onlineCount: 0,
   recentFeed:  [],
