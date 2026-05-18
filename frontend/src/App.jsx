@@ -13,7 +13,7 @@ import WelcomePage     from './pages/WelcomePage';
 import { useSocketEvents }    from './hooks/useSocketEvents';
 import { usePlayerStore, useAuthStore } from './store';
 
-// ── Guest Banner ──────────────────────────────────────────────────────────────
+// Guest Banner 
 function GuestBanner() {
   const { logout }                = useAuthStore();
   const navigate                  = useNavigate();
@@ -70,7 +70,7 @@ function GuestBanner() {
   );
 }
 
-// ── App Inner ─────────────────────────────────────────────────────────────────
+// App Inner
 function AppInner() {
   const { currentPlayer, loadPlayers }       = usePlayerStore();
   const { isAuthenticated, checkAuth, user } = useAuthStore();
