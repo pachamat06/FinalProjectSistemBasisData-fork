@@ -14,7 +14,7 @@ const prisma            = require('./config/prisma');
 const app = express();
 app.set('trust proxy', 1);
 
-// ✅ CORS — izinkan semua *.vercel.app + localhost + CORS_ORIGIN yang dikonfigurasi
+// CORS — izinkan semua *.vercel.app + localhost + CORS_ORIGIN yang dikonfigurasi
 app.use(cors({
   origin: (origin, callback) => {
     // Izinkan: tanpa origin (mobile/Postman), localhost, semua *.vercel.app
