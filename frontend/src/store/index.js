@@ -1,9 +1,7 @@
 import { create } from 'zustand';
 import api, { fetchPlayer, fetchPlayers, fetchPlayerHistory } from '../services/api';
 
-// ─────────────────────────────────────────────────────────────────────────────
 // AUTH STORE
-// ─────────────────────────────────────────────────────────────────────────────
 export const useAuthStore = create((set, get) => ({
   user:            null,
   token:           null,
@@ -14,7 +12,7 @@ export const useAuthStore = create((set, get) => ({
   login: async (usernameOrEmail, password) => {
     set({ loading: true, error: null });
     try {
-      // ✅ Pakai axios api instance (pakai VITE_API_URL), bukan fetch manual
+      // Pakai axios api instance (pakai VITE_API_URL), bukan fetch manual
       const data = await api.post('/auth/login', { usernameOrEmail, password });
 
       localStorage.setItem('token', data.token);
@@ -96,9 +94,7 @@ export const useAuthStore = create((set, get) => ({
   },
 }));
 
-// ─────────────────────────────────────────────────────────────────────────────
 // PLAYER STORE
-// ─────────────────────────────────────────────────────────────────────────────
 export const usePlayerStore = create((set, get) => ({
   currentPlayer: null,
   players:       [],
@@ -145,9 +141,7 @@ export const usePlayerStore = create((set, get) => ({
   },
 }));
 
-// ─────────────────────────────────────────────────────────────────────────────
 // GAME STORE
-// ─────────────────────────────────────────────────────────────────────────────
 export const useGameStore = create((set) => ({
   isSpinning:   false,
   lastResult:   null,
@@ -178,9 +172,7 @@ export const useGameStore = create((set) => ({
   },
 }));
 
-// ─────────────────────────────────────────────────────────────────────────────
 // LEADERBOARD STORE
-// ─────────────────────────────────────────────────────────────────────────────
 export const useLeaderboardStore = create((set) => ({
   leaderboard: [],
   recentWins:  [],
@@ -197,9 +189,7 @@ export const useLeaderboardStore = create((set) => ({
   },
 }));
 
-// ─────────────────────────────────────────────────────────────────────────────
 // SYSTEM STORE
-// ─────────────────────────────────────────────────────────────────────────────
 export const useSystemStore = create((set) => ({
   onlineCount: 0,
   recentFeed:  [],
