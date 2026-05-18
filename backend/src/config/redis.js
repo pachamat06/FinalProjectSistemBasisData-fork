@@ -9,7 +9,7 @@ function getRedis() {
 
     redis = new Redis(redisUrl, {
       tls:                  isTLS ? {} : undefined,
-      // ✅ Kurangi retry untuk serverless — gagal cepat daripada tunggu lama
+      // Kurangi retry untuk serverless
       maxRetriesPerRequest: 1,
       connectTimeout:       3000,  // 3 detik max tunggu koneksi
       commandTimeout:       3000,  // 3 detik max per command
@@ -20,7 +20,7 @@ function getRedis() {
       reconnectOnError(err) {
         return err.message.includes('READONLY');
       },
-      lazyConnect: true, // ✅ tidak konek sampai benar-benar dipakai
+      lazyConnect: true, // tidak konek sampai benar-benar dipakai
     });
 
     redis.on('connect',      () => console.log('[Redis] Connected'));
